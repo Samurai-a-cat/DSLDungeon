@@ -27,7 +27,8 @@ public class GameService : IDisposable
 
     public GameService()
     {
-        ActionPool.Initialize();
+        // Инициализируем новый пул событий вместо ActionPool
+        EventPool.Initialize();
 
         // 1. Инициализируем мир и цикл
         var map = new HexMap(3);
@@ -93,6 +94,4 @@ public class GameService : IDisposable
         Stop();
         _cts?.Dispose();
     }
-    
-
 }

@@ -1,14 +1,31 @@
-﻿using DSLDungeon.Game.Core.Actions;
+﻿using System;
+using DSLDungeon.Game.Core.Actions;
+using DSLDungeon.Game.Core.Actions.Systems;
 using DSLDungeon.Game.Core.Time;
 using DSLDungeon.Game.Entities;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game;
 
-public class GameLoop(WorldState world)
+public class GameLoop
 {
+    private readonly WorldState _world;
     private readonly TimeChannel _gameTimeChannel = TimeSystem.CreateChannel();
+    
+    // Глобальные системы в единственном экземпляре
+    private readonly DeathSystem _deathSystem = new();
+    private readonly MovementSystem _movementSystem = new();
+    private readonly MeleeAttackSystem _meleeAttackSystem = new();
+
     public TimeChannel GameTimeChannel => _gameTimeChannel;
+
+    public GameLoop(WorldState world)
+    {
+        _world = world;
+        
+        // Обязательная инициализация пула событий при старте игры
+        EventPool.Initialize();
+    }
 
     public void Update() 
     {
@@ -18,7 +35,8 @@ public class GameLoop(WorldState world)
 
         if (dt <= 0) return;
 
-        foreach (var actor in world.GetAllActors()) 
+        // 1. ИИ наполняет очереди свободным акторам
+        foreach (var actor in _world.GetAllActors()) 
         {
             if (actor.Health is { IsDead: true }) continue;
 
@@ -26,13 +44,20 @@ public class GameLoop(WorldState world)
             {
                 RunPrototypeAI(actor); 
             }
-            actor.Queue.Update(dt);
+        }
+
+        // 2. Системы поочередно выполняют логику над событиями в очередях
+        _deathSystem.Update(_world);
+        _movementSystem.Update(dt, _world);
+        _meleeAttackSystem.Update(dt, _world);
+
+        // 3. Освобождение завершенных событий обратно в пул
+        foreach (var actor in _world.GetAllActors())
+        {
+            actor.Queue.CleanUp();
         }
     }
 
-    /// <summary>
-    /// Прототип ИИ, реализующий логику: "Найти врага -> Подойти -> Ударить"
-    /// </summary>
     private void RunPrototypeAI(Actor actor)
     {
         Actor? target = FindNearestEnemy(actor);
@@ -43,22 +68,27 @@ public class GameLoop(WorldState world)
         if (distance > 1)
         {
             HexCoords nextStep = GetStepTowards(actor.Position, target.Position);
-            var cmd = ActionFactory.Create<MoveToNeighborCommand>(c => c.Initialize(actor.Id, nextStep, 0.8f));
+            
+            // Замена ActionFactory на EventFactory
+            var moveEvent = EventFactory.Create<MoveEvent>(actor.Id, e =>
+            {
+                e.TargetCoords = nextStep;
+                e.Duration = 0.8f;
+            });
     
-            actor.Queue.Enqueue(cmd);
-            Console.WriteLine($"[ИИ] {actor.Name} ({actor.Position}) идет к {target.Name} на клетку {nextStep}");
+            actor.Queue.Enqueue(moveEvent);
+            Console.WriteLine($"[ИИ] {actor.Name} ({actor.Position}) решил идти к {target.Name} на клетку {nextStep}");
         }
         else
         {
-            // Враг на соседней клетке. Бьем его!
             var weapon = actor.Inventory?.EquippedWeapon;
             if (weapon != null)
             {
-                // Запрашиваем у оружия команду атаки (берет урон и скорость из оружия)
-                var cmd = ActionFactory.Create<MeleeAttackCommand>(c => c.Initialize(actor.Id, target.Id, weapon.Damage, weapon.AttackSpeed));
-                actor.Queue.Enqueue(cmd);
+                // Запрашиваем у оружия создание события атаки
+                var attackEvent = weapon.CreateAttackEvent(actor.Id, target.Id);
+                actor.Queue.Enqueue(attackEvent);
                 
-                Console.WriteLine($"[ИИ] {actor.Name} атакует {target.Name} мечом ({weapon.Damage} урона)!");
+                Console.WriteLine($"[ИИ] {actor.Name} замахнулся на {target.Name} мечом ({weapon.Damage} урона)!");
             }
             else
             {
@@ -74,12 +104,10 @@ public class GameLoop(WorldState world)
         Actor? nearest = null;
         int minDistance = int.MaxValue;
 
-        foreach (var other in world.GetAllActors())
+        foreach (var other in _world.GetAllActors())
         {
-            if (other.Id == actor.Id) continue; // Не бьем самого себя
-            if (other.Health?.IsDead == true) continue; // Игнорируем мертвых
-
-            // Для простоты прототипа: Герой бьет Орков, Орки бьют Героев
+            if (other.Id == actor.Id) continue;
+            if (other.Health?.IsDead == true) continue;
             if (other.GetType() == actor.GetType()) continue; 
 
             int dist = actor.Position.DistanceTo(other.Position);
@@ -93,9 +121,6 @@ public class GameLoop(WorldState world)
         return nearest;
     }
 
-    /// <summary>
-    /// Вычисляет соседний гекс, находящийся на кратчайшем пути к цели
-    /// </summary>
     private HexCoords GetStepTowards(HexCoords from, HexCoords to)
     {
         HexCoords bestStep = from;
@@ -105,11 +130,9 @@ public class GameLoop(WorldState world)
         {
             HexCoords neighbor = from.GetNeighbor(i);
             
-            // Проверяем проходимость клетки
-            if (world.Map.TryGetTile(neighbor, out var tile) && tile.IsPassable)
+            if (_world.Map.TryGetTile(neighbor, out var tile) && tile.IsPassable)
             {
-                // Проверяем, не занята ли клетка кем-то другим
-                if (world.GetEntityAt(neighbor) != null) continue;
+                if (_world.GetEntityAt(neighbor) != null) continue;
 
                 int dist = neighbor.DistanceTo(to);
                 if (dist < minDistance)

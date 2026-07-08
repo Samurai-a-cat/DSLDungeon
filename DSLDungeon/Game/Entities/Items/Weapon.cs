@@ -1,5 +1,6 @@
 ﻿using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Core.Actions;
+using DSLDungeon.Game.Core.Actions.Systems;
 
 namespace DSLDungeon.Game.Entities.Items;
 
@@ -18,15 +19,14 @@ public class Weapon : Item
         IsRanged = isRanged;
     }
 
-    public ActionCommand CreateAttackCommand(EntityId attacker, EntityId target)
+    public IQueueEvent CreateAttackEvent(EntityId attacker, EntityId target)
     {
-        if (IsRanged)
+        // Для ближнего боя создаем MeleeAttackEvent из пула
+        return EventFactory.Create<MeleeAttackEvent>(attacker, ev =>
         {
-            return ActionFactory.Create<RangedAttackCommand>(cmd => 
-                cmd.Initialize(attacker, target, Damage, AttackSpeed));
-        }
-    
-        return ActionFactory.Create<MeleeAttackCommand>(cmd => 
-            cmd.Initialize(attacker, target, Damage, AttackSpeed));
+            ev.TargetId = target;
+            ev.Damage = Damage;
+            ev.Duration = AttackSpeed;
+        });
     }
 }

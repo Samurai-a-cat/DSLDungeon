@@ -7,14 +7,14 @@ namespace DSLDungeon.Game.Entities;
 
 public abstract class Actor : Entity
 {
-    public ActionQueue Queue { get; }
+    public EventQueue Queue { get; }
     
     public InventorySystem? Inventory { get; protected set; }
     
     protected Actor(EntityId id, string name, HexCoords position, WorldState world) 
         : base(id, name, position)
     {
-        Queue = new ActionQueue(world);
+        Queue = new EventQueue();
         Inventory = new InventorySystem(world);
     }
 }

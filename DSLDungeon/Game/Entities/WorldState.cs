@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Grid;
 
