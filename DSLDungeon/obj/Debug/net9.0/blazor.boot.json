@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "DSLDungeon",
   "resources": {
-    "hash": "sha256-/BDvkAswWMErDvraBksxH8G98OAbsnEsXQMT8LU8iwc=",
+    "hash": "sha256-DbOCuZl8u+ydf5QYKLYgxdIIanCdrprmLLItPKZoU7o=",
     "fingerprinting": {
       "Microsoft.AspNetCore.Authorization.z6jo10m0rd.wasm": "Microsoft.AspNetCore.Authorization.wasm",
       "Microsoft.AspNetCore.Components.65wbz7t8mt.wasm": "Microsoft.AspNetCore.Components.wasm",
@@ -201,8 +201,8 @@
       "icudt_CJK.tjcz0u77k5.dat": "icudt_CJK.dat",
       "icudt_EFIGS.tptq2av103.dat": "icudt_EFIGS.dat",
       "icudt_no_CJK.lfu7j35m59.dat": "icudt_no_CJK.dat",
-      "DSLDungeon.hg1o5q8y9w.wasm": "DSLDungeon.wasm",
-      "DSLDungeon.k9csb4g5me.pdb": "DSLDungeon.pdb"
+      "DSLDungeon.g0xoweee5r.wasm": "DSLDungeon.wasm",
+      "DSLDungeon.nm0negmknj.pdb": "DSLDungeon.pdb"
     },
     "jsModuleNative": {
       "dotnet.native.9ih887ebfz.js": "sha256-oS7IRiQoVt9ThQ7Y2UM3XoeY0JqPD02cg9IvRdufn2w="
@@ -412,10 +412,10 @@
       "WindowsBase.vy2l5u79y6.wasm": "sha256-ufB9Mo5joMyUs3DzXWWBFFIZNEVrt6h9N5stYB6Oln4=",
       "mscorlib.xd6mv31d55.wasm": "sha256-1YSLR2eZt3ceALFV//vZUF2AloxVil3VlrW1zZYPSEI=",
       "netstandard.kaml52uspo.wasm": "sha256-HLEwBpLfzKw2/zGSVzHzFJxznCkt/WIjahrziiMrOpA=",
-      "DSLDungeon.hg1o5q8y9w.wasm": "sha256-Yepb0G4rJmcp47QQVAFueoRZsJfXnrZsdHrfrSl1s58="
+      "DSLDungeon.g0xoweee5r.wasm": "sha256-IDVWVDP5pP93/gkqhMVFiNFpxIMcsbXGIJFY8NA9ulY="
     },
     "pdb": {
-      "DSLDungeon.k9csb4g5me.pdb": "sha256-GOjeGR3gAoB/EUbAFDo5i90Q2vThh9zerOJ1tgmTdio="
+      "DSLDungeon.nm0negmknj.pdb": "sha256-ES+z7eQaeGCNIS9D7FjcVlHtJZtT6HvSiv40n4pobPA="
     }
   },
   "cacheBootResources": true,

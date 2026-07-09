@@ -1073,10 +1073,10 @@ D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\DSLDungeon.dll
 D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\refint\DSLDungeon.dll
 D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\DSLDungeon.pdb
 D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\ref\DSLDungeon.dll
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.hg1o5q8y9w.wasm
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.k9csb4g5me.pdb
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.hg1o5q8y9w.wasm.gz
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.k9csb4g5me.pdb.gz
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\pakhgk0rg6-hg1o5q8y9w.gz
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\8qhi1ejbit-k9csb4g5me.gz
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\upx589h7zo-ztu7kv8go4.gz
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.g0xoweee5r.wasm
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.nm0negmknj.pdb
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.g0xoweee5r.wasm.gz
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.nm0negmknj.pdb.gz
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\pakhgk0rg6-g0xoweee5r.gz
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\8qhi1ejbit-nm0negmknj.gz
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\upx589h7zo-ftj80bp9ad.gz

@@ -1,5 +1,4 @@
-﻿using System;
-using DSLDungeon.Game.Core.Actions;
+﻿using DSLDungeon.Game.Core.Actions;
 using DSLDungeon.Game.Core.Actions.Systems;
 using DSLDungeon.Game.Core.Time;
 using DSLDungeon.Game.Entities;
@@ -11,31 +10,23 @@ public class GameLoop
 {
     private readonly WorldState _world;
     private readonly TimeChannel _gameTimeChannel = TimeSystem.CreateChannel();
-    
-    // Глобальные системы в единственном экземпляре
-    private readonly DeathSystem _deathSystem = new();
-    private readonly MovementSystem _movementSystem = new();
-    private readonly MeleeAttackSystem _meleeAttackSystem = new();
-
     public TimeChannel GameTimeChannel => _gameTimeChannel;
 
     public GameLoop(WorldState world)
     {
         _world = world;
-        
-        // Обязательная инициализация пула событий при старте игры
         EventPool.Initialize();
     }
 
     public void Update() 
     {
         TimeSystem.Update();
-        
+    
         float dt = _gameTimeChannel.Delta.Value;
 
         if (dt <= 0) return;
 
-        // 1. ИИ наполняет очереди свободным акторам
+        // 1. ИИ наполняет очереди
         foreach (var actor in _world.GetAllActors()) 
         {
             if (actor.Health is { IsDead: true }) continue;
@@ -46,16 +37,20 @@ public class GameLoop
             }
         }
 
-        // 2. Системы поочередно выполняют логику над событиями в очередях
-        _deathSystem.Update(_world);
-        _movementSystem.Update(dt, _world);
-        _meleeAttackSystem.Update(dt, _world);
+        // 2. Системы последовательно обрабатывают логику
+        _world.Systems.Update(dt, _world);
 
-        // 3. Освобождение завершенных событий обратно в пул
+        // 3. Очистка локальных очередей
         foreach (var actor in _world.GetAllActors())
         {
-            actor.Queue.CleanUp();
+            actor.Queue.CleanUp(_world);
         }
+
+        // 4. Очистка глобальной очереди мира
+        _world.WorldQueue.CleanUp(_world);
+
+        // 5. ФИНАЛЬНАЯ БЕЗОПАСНАЯ ФАЗА: Удаление сущностей из памяти и возврат ID в генератор
+        _world.FinalizeDespawns();
     }
 
     private void RunPrototypeAI(Actor actor)
@@ -68,31 +63,28 @@ public class GameLoop
         if (distance > 1)
         {
             HexCoords nextStep = GetStepTowards(actor.Position, target.Position);
-            
-            // Замена ActionFactory на EventFactory
+        
+            // Рыцарь ходит очень быстро (0.4s), Орки — медленно (1.0s)
+            float moveDuration = actor.Name.Contains("Рыцарь") ? 0.4f : 1.0f;
+
             var moveEvent = EventFactory.Create<MoveEvent>(actor.Id, e =>
             {
                 e.TargetCoords = nextStep;
-                e.Duration = 0.8f;
+                e.Duration = moveDuration;
             });
-    
-            actor.Queue.Enqueue(moveEvent);
-            Console.WriteLine($"[ИИ] {actor.Name} ({actor.Position}) решил идти к {target.Name} на клетку {nextStep}");
+
+            actor.Queue.Enqueue(moveEvent, _world);
+            _world.AddLog($"[ИИ] {actor.Name} наметил путь на {nextStep.ToString()} (ETA: {moveDuration:0.0}s)");
         }
         else
         {
             var weapon = actor.Inventory?.EquippedWeapon;
             if (weapon != null)
             {
-                // Запрашиваем у оружия создание события атаки
                 var attackEvent = weapon.CreateAttackEvent(actor.Id, target.Id);
-                actor.Queue.Enqueue(attackEvent);
-                
-                Console.WriteLine($"[ИИ] {actor.Name} замахнулся на {target.Name} мечом ({weapon.Damage} урона)!");
-            }
-            else
-            {
-                Console.WriteLine($"[ИИ] {actor.Name} хочет атаковать {target.Name}, но у него нет оружия!");
+                actor.Queue.Enqueue(attackEvent, _world);
+            
+                _world.AddLog($"[ИИ] {actor.Name} замахнулся на {target.Name} ({weapon.Damage} урона)!");
             }
         }
     }

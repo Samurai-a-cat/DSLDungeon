@@ -3,33 +3,22 @@
 namespace DSLDungeon.Game.Core.Actions.Systems;
 
 [PoolConfig(5)]
-public class DieEvent : QueueEvent
+public class DieEvent : QueueEvent<DeathSystem>
 {
-    public override int Priority => 1; // Наивысший приоритет
+    public override int Priority => 1;
 }
 
-public class DeathSystem
+public class DeathSystem : GameSystem<DieEvent>, IGameSystem
 {
-    public void Update(WorldState world)
+    protected override void OnUpdate(float deltaTime, Actor actor, DieEvent ev, WorldState world)
     {
-        foreach (var actor in world.GetAllActors())
-        {
-            var queue = actor.Queue;
-            var activeEvent = queue.GetActiveEvent();
+        // 1. Отменяем все остальные действия в очереди актора
+        actor.Queue.ClearExcept(ev);
 
-            if (activeEvent is DieEvent dieEvent)
-            {
-                if (dieEvent.Status == EventStatus.Pending)
-                {
-                    dieEvent.Status = EventStatus.Executing;
-                }
+        // 2. Регистрируем актора на удаление из мира
+        world.Despawn(actor.Id);
 
-                // Прерываем все остальные задачи актора
-                queue.ClearExcept(dieEvent);
-
-                // Завершаем событие
-                dieEvent.Status = EventStatus.Completed;
-            }
-        }
+        // 3. Завершаем событие смерти
+        ev.Status = EventStatus.Completed;
     }
 }

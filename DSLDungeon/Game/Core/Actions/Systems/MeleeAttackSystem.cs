@@ -3,15 +3,14 @@
 namespace DSLDungeon.Game.Core.Actions.Systems;
 
 [PoolConfig(10)]
-public class MeleeAttackEvent : QueueEvent
+public class MeleeAttackEvent : QueueEvent<MeleeAttackSystem>
 {
-    public override int Priority => 3; // Средний приоритет
+    public override int Priority => 3;
 
     public EntityId TargetId { get; set; }
     public int Damage { get; set; }
     public float Duration { get; set; }
     public float ElapsedTime { get; set; }
-
     public override void Reset()
     {
         base.Reset();
@@ -21,59 +20,46 @@ public class MeleeAttackEvent : QueueEvent
         ElapsedTime = 0f;
     }
 }
-
-public class MeleeAttackSystem
+[SystemOrder(30)]
+public class MeleeAttackSystem : GameSystem<MeleeAttackEvent>, IGameSystem
 {
-    public void Update(float deltaTime, WorldState world)
+    protected override void OnStart(Actor actor, MeleeAttackEvent ev, WorldState world)
     {
-        foreach (var actor in world.GetAllActors())
+        // Проверка дистанции на старте
+        if (!world.TryGetEntity(ev.TargetId, out var target) || target.Health?.IsDead == true)
         {
-            var queue = actor.Queue;
-            var activeEvent = queue.GetActiveEvent();
+            ev.Status = EventStatus.Cancelled;
+            return;
+        }
 
-            if (activeEvent is MeleeAttackEvent attackEvent)
+        float distance = actor.Position.DistanceTo(target.Position);
+        if (distance > 1.2f)
+        {
+            ev.Status = EventStatus.Cancelled;
+        }
+    }
+    
+    protected override void OnUpdate(float deltaTime, Actor actor, MeleeAttackEvent ev, WorldState world)
+    {
+        ev.ElapsedTime += deltaTime;
+
+        if (ev.ElapsedTime >= ev.Duration)
+        {
+            if (world.TryGetEntity(ev.TargetId, out var target))
             {
-                if (attackEvent.Status == EventStatus.Pending)
+                if (actor.Health?.IsDead != true && target.Health != null && !target.Health.IsDead)
                 {
-                    if (!world.TryGetEntity(attackEvent.TargetId, out var target) || target.Health?.IsDead == true)
+                    target.Health.ModifyHp(-ev.Damage);
+
+                    if (target is Actor targetActor && targetActor.Health?.IsDead == true)
                     {
-                        attackEvent.Status = EventStatus.Cancelled;
-                        continue;
+                        var dieEvent = EventFactory.Create<DieEvent>(targetActor.Id, _ => { });
+                        targetActor.Queue.Enqueue(dieEvent, world);
                     }
-
-                    float distance = actor.Position.DistanceTo(target.Position);
-                    if (distance > 1.2f)
-                    {
-                        Console.WriteLine($"[MeleeAttackSystem] Distance too big: {distance}. Cancelled.");
-                        attackEvent.Status = EventStatus.Cancelled;
-                        continue;
-                    }
-
-                    attackEvent.Status = EventStatus.Executing;
-                }
-
-                attackEvent.ElapsedTime += deltaTime;
-
-                if (attackEvent.ElapsedTime >= attackEvent.Duration)
-                {
-                    if (world.TryGetEntity(attackEvent.TargetId, out var target))
-                    {
-                        if (actor.Health?.IsDead != true && target.Health != null && !target.Health.IsDead)
-                        {
-                            target.Health.ModifyHp(-attackEvent.Damage);
-
-                            // Интеграция со смертью: если цель умерла и является Актором, сразу вешаем на неё событие смерти
-                            if (target is Actor targetActor && targetActor.Health?.IsDead == true)
-                            {
-                                var dieEvent = EventFactory.Create<DieEvent>(targetActor.Id, _ => {});
-                                targetActor.Queue.Enqueue(dieEvent);
-                            }
-                        }
-                    }
-
-                    attackEvent.Status = EventStatus.Completed;
                 }
             }
+
+            ev.Status = EventStatus.Completed;
         }
     }
 }

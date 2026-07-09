@@ -1,4 +1,6 @@
-﻿namespace DSLDungeon.Game.Core.Actions;
+﻿using DSLDungeon.Game.Entities;
+
+namespace DSLDungeon.Game.Core.Actions;
 
 public class EventQueue
 {
@@ -8,7 +10,7 @@ public class EventQueue
     public bool IsEmpty => _events.Count == 0;
     public int Count => _events.Count;
 
-    public bool Enqueue(IQueueEvent ev)
+    public bool Enqueue(IQueueEvent ev, WorldState world)
     {
         if (_events.Count >= MaxQueueCapacity)
         {
@@ -19,6 +21,9 @@ public class EventQueue
 
         _events.Add(ev);
         SortEvents();
+        
+        // Сигнал событию зарегистрировать владельца в системе
+        ev.OnEnqueue(world); 
         return true;
     }
 
@@ -33,7 +38,6 @@ public class EventQueue
         {
             _events[i].Status = EventStatus.Cancelled;
         }
-        CleanUp();
     }
 
     public void ClearExcept(IQueueEvent keepEvent)
@@ -46,16 +50,24 @@ public class EventQueue
                 ev.Status = EventStatus.Cancelled;
             }
         }
-        CleanUp();
     }
 
-    public void CleanUp()
+    public void CleanUp(WorldState world)
     {
         for (int i = _events.Count - 1; i >= 0; i--)
         {
             var ev = _events[i];
-            if (ev.Status == EventStatus.Completed || ev.Status == EventStatus.Cancelled)
+            if (ev.Status == EventStatus.Completed)
             {
+                ev.OnFinish(world); // <- Вызов при успешном завершении
+                ev.OnCleanUp(world); 
+                _events.RemoveAt(i);
+                EventPool.Return(ev);
+            }
+            else if (ev.Status == EventStatus.Cancelled)
+            {
+                ev.OnCancel(world); // <- Вызов при отмене/прерывании
+                ev.OnCleanUp(world); 
                 _events.RemoveAt(i);
                 EventPool.Return(ev);
             }
