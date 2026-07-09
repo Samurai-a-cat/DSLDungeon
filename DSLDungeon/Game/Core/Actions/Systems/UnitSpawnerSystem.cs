@@ -1,5 +1,6 @@
 ﻿using DSLDungeon.Game.Entities;
 using DSLDungeon.Game.Entities.Characters;
+using DSLDungeon.Game.Entities.Items;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game.Core.Actions.Systems;
@@ -58,14 +59,19 @@ public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
         var id = EntityIdGenerator.Next();
         Actor newUnit;
 
-        // В будущем здесь будет обращение к фабрике шаблонов существ (архетипов)
         if (ev.UnitType == "Orc")
         {
-            newUnit = new Orc(id, ev.UnitName, ev.SpawnCoords, world, maxHp: 40);
+            var orc = new Orc(id, ev.UnitName, ev.SpawnCoords, world, maxHp: 40);
+        
+            // Каждый новый орк волны получает ржавый кинжал (3 урона, скорость 1.0с)
+            var dagger = new Weapon("Ржавый кинжал", damage: 3, range: 1, attackSpeed: 1.0f, isRanged: false);
+            orc.Inventory!.EquippedWeapon = dagger;
+
+            newUnit = orc;
         }
         else if (ev.UnitType == "SummonedMinion")
         {
-            newUnit = new Hero(id, ev.UnitName, ev.SpawnCoords, world, maxHp: 30); // Временный союзный юнит
+            newUnit = new Hero(id, ev.UnitName, ev.SpawnCoords, world, maxHp: 30);
         }
         else
         {
@@ -74,6 +80,6 @@ public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
         }
 
         world.SpawnEntity(newUnit);
-        Console.WriteLine($"[Спавнер] Юнит '{newUnit.Name}' ({newUnit.Id}) материализовался в координате {newUnit.Position}");
+        world.AddLog($"[Спавнер] Юнит '{newUnit.Name}' ({newUnit.Id.ToString()}) материализовался в координате {newUnit.Position.ToString()}");
     }
 }

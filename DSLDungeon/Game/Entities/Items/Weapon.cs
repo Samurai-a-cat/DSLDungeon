@@ -21,12 +21,13 @@ public class Weapon : Item
 
     public IQueueEvent CreateAttackEvent(EntityId attacker, EntityId target)
     {
-        // Для ближнего боя создаем MeleeAttackEvent из пула
-        return EventFactory.Create<MeleeAttackEvent>(attacker, ev =>
-        {
-            ev.TargetId = target;
-            ev.Damage = Damage;
-            ev.Duration = AttackSpeed;
-        });
+        // Извлекаем событие атаки напрямую из пула и инициализируем его поля
+        var ev = EventPool.Get<MeleeAttackEvent>();
+        ev.Owner = attacker;
+        ev.TargetId = target;
+        ev.Damage = Damage;
+        ev.Duration = AttackSpeed;
+        
+        return ev;
     }
 }

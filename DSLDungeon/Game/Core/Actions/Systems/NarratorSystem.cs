@@ -34,12 +34,11 @@ public class NarratorSystem : IGameSystem
                 // Ищем случайную свободную и проходимую координату на карте
                 HexCoords spawnCoords = GetRandomPassableCoords(world);
 
-                var spawnEvent = EventFactory.Create<SpawnUnitEvent>(EntityId.None, ev =>
-                {
-                    ev.UnitType = "Orc";
-                    ev.UnitName = $"Орк Волны {_currentWave}";
-                    ev.SpawnCoords = spawnCoords;
-                });
+                var spawnEvent = EventPool.Get<SpawnUnitEvent>();
+                spawnEvent.Owner = EntityId.None;
+                spawnEvent.UnitType = "Orc";
+                spawnEvent.UnitName = $"Орк Волны {_currentWave}";
+                spawnEvent.SpawnCoords = spawnCoords;
 
                 world.WorldQueue.Enqueue(spawnEvent, world);
                 _waveInProgress = true;

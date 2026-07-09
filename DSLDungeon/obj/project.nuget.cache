@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "FI9Wq9pcisg=",
+  "dgSpecHash": "CdaPqbckQRM=",
   "success": true,
   "projectFilePath": "D:\\MyProjects\\DSLDungeon\\DSLDungeon\\DSLDungeon\\DSLDungeon.csproj",
   "expectedPackageFiles": [
@@ -29,8 +29,13 @@
     "C:\\Users\\Alex\\.nuget\\packages\\microsoft.jsinterop\\9.0.9\\microsoft.jsinterop.9.0.9.nupkg.sha512",
     "C:\\Users\\Alex\\.nuget\\packages\\microsoft.jsinterop.webassembly\\9.0.9\\microsoft.jsinterop.webassembly.9.0.9.nupkg.sha512",
     "C:\\Users\\Alex\\.nuget\\packages\\microsoft.net.illink.tasks\\9.0.9\\microsoft.net.illink.tasks.9.0.9.nupkg.sha512",
-    "C:\\Users\\Alex\\.nuget\\packages\\microsoft.net.sdk.webassembly.pack\\9.0.9\\microsoft.net.sdk.webassembly.pack.9.0.9.nupkg.sha512",
-    "C:\\Users\\Alex\\.nuget\\packages\\microsoft.netcore.app.runtime.mono.browser-wasm\\9.0.9\\microsoft.netcore.app.runtime.mono.browser-wasm.9.0.9.nupkg.sha512"
+    "C:\\Users\\Alex\\.nuget\\packages\\microsoft.net.sdk.webassembly.pack\\9.0.17\\microsoft.net.sdk.webassembly.pack.9.0.17.nupkg.sha512",
+    "C:\\Users\\Alex\\.nuget\\packages\\skiasharp\\4.150.0\\skiasharp.4.150.0.nupkg.sha512",
+    "C:\\Users\\Alex\\.nuget\\packages\\skiasharp.nativeassets.macos\\4.150.0\\skiasharp.nativeassets.macos.4.150.0.nupkg.sha512",
+    "C:\\Users\\Alex\\.nuget\\packages\\skiasharp.nativeassets.webassembly\\4.150.0\\skiasharp.nativeassets.webassembly.4.150.0.nupkg.sha512",
+    "C:\\Users\\Alex\\.nuget\\packages\\skiasharp.nativeassets.win32\\4.150.0\\skiasharp.nativeassets.win32.4.150.0.nupkg.sha512",
+    "C:\\Users\\Alex\\.nuget\\packages\\skiasharp.views.blazor\\4.150.0\\skiasharp.views.blazor.4.150.0.nupkg.sha512",
+    "C:\\Users\\Alex\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.17\\microsoft.netcore.app.ref.9.0.17.nupkg.sha512"
   ],
   "logs": []
 }

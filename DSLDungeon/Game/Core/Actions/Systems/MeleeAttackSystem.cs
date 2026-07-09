@@ -1,4 +1,5 @@
 ﻿using DSLDungeon.Game.Entities;
+using DSLDungeon.Game.Entities.Particles;
 
 namespace DSLDungeon.Game.Core.Actions.Systems;
 
@@ -25,7 +26,6 @@ public class MeleeAttackSystem : GameSystem<MeleeAttackEvent>, IGameSystem
 {
     protected override void OnStart(Actor actor, MeleeAttackEvent ev, WorldState world)
     {
-        // Проверка дистанции на старте
         if (!world.TryGetEntity(ev.TargetId, out var target) || target.Health?.IsDead == true)
         {
             ev.Status = EventStatus.Cancelled;
@@ -47,13 +47,23 @@ public class MeleeAttackSystem : GameSystem<MeleeAttackEvent>, IGameSystem
         {
             if (world.TryGetEntity(ev.TargetId, out var target))
             {
-                if (actor.Health?.IsDead != true && target.Health != null && !target.Health.IsDead)
+                if (actor.Health?.IsDead != true && target.Health is { IsDead: false })
                 {
                     target.Health.ModifyHp(-ev.Damage);
 
-                    if (target is Actor targetActor && targetActor.Health?.IsDead == true)
+                    // Спавним триггер всплывающего урона на координатах жертвы
+                    world.PendingDamageTriggers.Add(new VisualDamageTrigger
                     {
-                        var dieEvent = EventFactory.Create<DieEvent>(targetActor.Id, _ => { });
+                        Coords = target.Position,
+                        Text = $"-{ev.Damage}",
+                        Type = "Damage"
+                    });
+
+                    if (target is Actor { Health.IsDead: true } targetActor)
+                    {
+                        var dieEvent = EventPool.Get<DieEvent>();
+                        dieEvent.Owner = targetActor.Id;
+    
                         targetActor.Queue.Enqueue(dieEvent, world);
                     }
                 }

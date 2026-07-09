@@ -9,6 +9,9 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.9"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.9" PrivateAssets="all"/>
+        <PackageReference Include="SkiaSharp" Version="4.150.0" />
+        <PackageReference Include="SkiaSharp.NativeAssets.WebAssembly" Version="4.150.0" />
+        <PackageReference Include="SkiaSharp.Views.Blazor" Version="4.150.0" />
     </ItemGroup>
 
 </Project>

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using DSLDungeon;
-using DSLDungeon.Game.Core.Actions;
 using DSLDungeon.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -11,5 +10,6 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
 builder.Services.AddSingleton<GameService>();
+builder.Services.AddSingleton<GameUiAgent>(sp => sp.GetRequiredService<GameService>().UiAgent);
 
 await builder.Build().RunAsync();

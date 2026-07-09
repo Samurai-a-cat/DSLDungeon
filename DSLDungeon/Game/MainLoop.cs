@@ -9,24 +9,36 @@ namespace DSLDungeon.Game;
 public class GameLoop
 {
     private readonly WorldState _world;
-    private readonly TimeChannel _gameTimeChannel = TimeSystem.CreateChannel();
+    
+    // 1. Создаем локальную систему времени для этого цикла
+    private readonly TimeSystem _timeSystem = new();
+    private readonly TimeChannel _gameTimeChannel;
+
     public TimeChannel GameTimeChannel => _gameTimeChannel;
+    
+    // Предоставляем доступ к системе времени (например, для GameService)
+    public TimeSystem Time => _timeSystem;
 
     public GameLoop(WorldState world)
     {
         _world = world;
+        
+        // 2. Регистрируем игровой канал времени из локальной системы
+        _gameTimeChannel = _timeSystem.CreateChannel();
+        
         EventPool.Initialize();
     }
 
     public void Update() 
     {
-        TimeSystem.Update();
+        // 3. Обновляем локальную систему времени
+        _timeSystem.Update();
     
         float dt = _gameTimeChannel.Delta.Value;
 
         if (dt <= 0) return;
 
-        // 1. ИИ наполняет очереди
+        // ИИ наполняет очереди
         foreach (var actor in _world.GetAllActors()) 
         {
             if (actor.Health is { IsDead: true }) continue;
@@ -37,19 +49,19 @@ public class GameLoop
             }
         }
 
-        // 2. Системы последовательно обрабатывают логику
+        // Системы последовательно обрабатывают логику
         _world.Systems.Update(dt, _world);
 
-        // 3. Очистка локальных очередей
+        // Очистка локальных очередей
         foreach (var actor in _world.GetAllActors())
         {
             actor.Queue.CleanUp(_world);
         }
 
-        // 4. Очистка глобальной очереди мира
+        // Очистка глобальной очереди мира
         _world.WorldQueue.CleanUp(_world);
 
-        // 5. ФИНАЛЬНАЯ БЕЗОПАСНАЯ ФАЗА: Удаление сущностей из памяти и возврат ID в генератор
+        // Удаление сущностей из памяти
         _world.FinalizeDespawns();
     }
 
@@ -63,15 +75,12 @@ public class GameLoop
         if (distance > 1)
         {
             HexCoords nextStep = GetStepTowards(actor.Position, target.Position);
-        
-            // Рыцарь ходит очень быстро (0.4s), Орки — медленно (1.0s)
             float moveDuration = actor.Name.Contains("Рыцарь") ? 0.4f : 1.0f;
-
-            var moveEvent = EventFactory.Create<MoveEvent>(actor.Id, e =>
-            {
-                e.TargetCoords = nextStep;
-                e.Duration = moveDuration;
-            });
+            
+            var moveEvent = EventPool.Get<MoveEvent>();
+            moveEvent.Owner = actor.Id;
+            moveEvent.TargetCoords = nextStep;
+            moveEvent.Duration = moveDuration;
 
             actor.Queue.Enqueue(moveEvent, _world);
             _world.AddLog($"[ИИ] {actor.Name} наметил путь на {nextStep.ToString()} (ETA: {moveDuration:0.0}s)");
@@ -81,9 +90,10 @@ public class GameLoop
             var weapon = actor.Inventory?.EquippedWeapon;
             if (weapon != null)
             {
+                // Оружие создает событие атаки напрямую из пула (без лямбд)
                 var attackEvent = weapon.CreateAttackEvent(actor.Id, target.Id);
                 actor.Queue.Enqueue(attackEvent, _world);
-            
+        
                 _world.AddLog($"[ИИ] {actor.Name} замахнулся на {target.Name} ({weapon.Damage} урона)!");
             }
         }

@@ -63,8 +63,20 @@
             "Microsoft.NET.Sdk.WebAssembly.Pack": {
               "suppressParent": "All",
               "target": "Package",
-              "version": "[9.0.9, )",
+              "version": "[9.0.17, )",
               "autoReferenced": true
+            },
+            "SkiaSharp": {
+              "target": "Package",
+              "version": "[4.150.0, )"
+            },
+            "SkiaSharp.NativeAssets.WebAssembly": {
+              "target": "Package",
+              "version": "[4.150.0, )"
+            },
+            "SkiaSharp.Views.Blazor": {
+              "target": "Package",
+              "version": "[4.150.0, )"
             }
           },
           "imports": [
@@ -80,8 +92,8 @@
           "warn": true,
           "downloadDependencies": [
             {
-              "name": "Microsoft.NETCore.App.Runtime.Mono.browser-wasm",
-              "version": "[9.0.9, 9.0.9]"
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[9.0.17, 9.0.17]"
             }
           ],
           "frameworkReferences": {

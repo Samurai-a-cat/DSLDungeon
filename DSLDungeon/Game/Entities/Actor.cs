@@ -15,6 +15,6 @@ public abstract class Actor : Entity
         : base(id, name, position)
     {
         Queue = new EventQueue();
-        Inventory = new InventorySystem(world);
+        Inventory = new InventorySystem();
     }
 }

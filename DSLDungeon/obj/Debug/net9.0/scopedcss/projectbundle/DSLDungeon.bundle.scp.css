@@ -1,80 +1,189 @@
-/* /Layout/MainLayout.razor.rz.scp.css */
-.page[b-p7yfmtxun5] {
-    position: relative;
-    display: flex;
-    flex-direction: column;
+/* /Components/GameViewport.razor.rz.scp.css */
+
+.game-layout[b-hh5d7eqbic] {
+    display: grid;
+    grid-template-rows: 1fr 260px;
+    height: 100%;
+    width: 100%;
+    padding: 20px;
+    gap: 20px;
+    box-sizing: border-box;
+    background-color: #0c0c0f;
 }
 
-main[b-p7yfmtxun5] {
+/* 1. Игровая арена (Родительский контейнер) */
+.main-game-area[b-hh5d7eqbic] {
+    grid-row: 1;
+    background-color: #09090b;
+    border: 2px solid #23232e;
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.canvas-container[b-hh5d7eqbic] {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Наш нативный Skia Canvas на весь экран */
+[b-hh5d7eqbic] .skia-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    cursor: grab;
+}
+
+[b-hh5d7eqbic] .skia-canvas:active {
+    cursor: grabbing;
+}
+
+/* Оверлей управления скоростью */
+.controls-overlay[b-hh5d7eqbic] {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    background-color: rgba(15, 15, 22, 0.9);
+    border: 1px solid #2d2d3d;
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+    backdrop-filter: blur(6px);
+    user-select: none;
+    z-index: 100; /* Поверх канваса */
+}
+
+.control-group[b-hh5d7eqbic] {
+    display: flex;
+    gap: 8px;
+}
+
+.slider-group[b-hh5d7eqbic] {
+    flex-direction: column;
+    gap: 4px;
+}
+
+.btn-control[b-hh5d7eqbic] {
     flex: 1;
+    background: #111116;
+    border: 1px solid #2d2d3d;
+    color: #888899;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-control:hover[b-hh5d7eqbic] {
+    border-color: #ffd700;
+    color: #fff;
+    background: #191922;
+}
+
+.btn-active-start[b-hh5d7eqbic] {
+    background: #143017 !important;
+    border-color: #00ff00 !important;
+    color: #00ff00 !important;
+}
+
+.btn-active-stop[b-hh5d7eqbic] {
+    background: #3c1616 !important;
+    border-color: #ff3333 !important;
+    color: #ff3333 !important;
+}
+
+.speed-label[b-hh5d7eqbic] {
+    font-size: 0.75rem;
+    color: #a4a4b5;
+}
+
+.speed-slider[b-hh5d7eqbic] {
+    width: 140px;
+    height: 4px;
+    background: #23232e;
+    outline: none;
+    border-radius: 2px;
+    appearance: none;
+    cursor: pointer;
+}
+
+.speed-slider[b-hh5d7eqbic]::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ffd700;
+    cursor: pointer;
+}
+
+/* --- ПРАВАЯ ПАНЕЛЬ И ЛОГИ --- */
+.bottom-panel[b-hh5d7eqbic] {
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+}
+
+.console-box[b-hh5d7eqbic], .controls-box[b-hh5d7eqbic] {
+    background-color: #09090b;
+    border: 2px solid #23232e;
+    border-radius: 16px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.box-title[b-hh5d7eqbic] {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    color: #ffd700;
+    border-bottom: 1px solid #1f1f2e;
+    padding-bottom: 8px;
+}
+
+.log-messages[b-hh5d7eqbic] {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.log-entry[b-hh5d7eqbic] {
+    margin-bottom: 6px;
+    color: #a4a4b5;
+}
+/* /Layout/MainLayout.razor.rz.scp.css */
+.app-container[b-p7yfmtxun5] {
+    display: grid;
+    grid-template-columns: 240px 1fr; /* Сайдбар фиксирован, контент резиновый */
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #0c0c0f;
+    color: #e2e2e9;
 }
 
 .sidebar[b-p7yfmtxun5] {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    background-image: linear-gradient(180deg, #111116 0%, #190a21 100%);
+    border-right: 1px solid #1f1f2e;
+    height: 100%;
+    overflow-y: auto;
 }
 
-.top-row[b-p7yfmtxun5] {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
-    justify-content: flex-end;
-    height: 3.5rem;
-    display: flex;
-    align-items: center;
-}
-
-    .top-row[b-p7yfmtxun5]  a, .top-row[b-p7yfmtxun5]  .btn-link {
-        white-space: nowrap;
-        margin-left: 1.5rem;
-        text-decoration: none;
-    }
-
-    .top-row[b-p7yfmtxun5]  a:hover, .top-row[b-p7yfmtxun5]  .btn-link:hover {
-        text-decoration: underline;
-    }
-
-    .top-row[b-p7yfmtxun5]  a:first-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-@media (max-width: 640.98px) {
-    .top-row[b-p7yfmtxun5] {
-        justify-content: space-between;
-    }
-
-    .top-row[b-p7yfmtxun5]  a, .top-row[b-p7yfmtxun5]  .btn-link {
-        margin-left: 0;
-    }
-}
-
-@media (min-width: 641px) {
-    .page[b-p7yfmtxun5] {
-        flex-direction: row;
-    }
-
-    .sidebar[b-p7yfmtxun5] {
-        width: 250px;
-        height: 100vh;
-        position: sticky;
-        top: 0;
-    }
-
-    .top-row[b-p7yfmtxun5] {
-        position: sticky;
-        top: 0;
-        z-index: 1;
-    }
-
-    .top-row.auth[b-p7yfmtxun5]  a:first-child {
-        flex: 1;
-        text-align: right;
-        width: 0;
-    }
-
-    .top-row[b-p7yfmtxun5], article[b-p7yfmtxun5] {
-        padding-left: 2rem !important;
-        padding-right: 1.5rem !important;
-    }
+.main-content[b-p7yfmtxun5] {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background-color: #0c0c0f;
 }
 /* /Layout/NavMenu.razor.rz.scp.css */
 .navbar-toggler[b-jkgvgkcoc9] {

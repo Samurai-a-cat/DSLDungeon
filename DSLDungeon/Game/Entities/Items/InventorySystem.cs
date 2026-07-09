@@ -1,6 +1,6 @@
 ﻿namespace DSLDungeon.Game.Entities.Items;
 
-public class InventorySystem(WorldState world)
+public class InventorySystem()
 {
     public List<Item> Items { get; } = new();
 

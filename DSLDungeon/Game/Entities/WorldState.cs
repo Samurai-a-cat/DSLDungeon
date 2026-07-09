@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Core.Actions;
+using DSLDungeon.Game.Entities.Particles;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game.Entities;
@@ -10,13 +9,18 @@ namespace DSLDungeon.Game.Entities;
 public class WorldState
 {
     public HexMap Map { get; }
+    
     private readonly Dictionary<EntityId, Entity> _entities = new();
+    
+    // 1. Создаем кэшированный список для живых акторов
+    private readonly List<Actor> _activeActors = new();
+    
+    public List<VisualDamageTrigger> PendingDamageTriggers { get; } = new();
     
     public SystemsRegistry Systems { get; } = new();
     public EventQueue WorldQueue { get; } = new();
     private readonly HashSet<EntityId> _entitiesToDespawn = new();
 
-    // Буфер внутриигровых логов
     public List<string> LogMessages { get; } = new();
 
     public WorldState(HexMap map)
@@ -29,7 +33,7 @@ public class WorldState
     {
         string timestamped = $"[{DateTime.Now:HH:mm:ss}] {message}";
         LogMessages.Add(timestamped);
-        if (LogMessages.Count > 40) // Ограничиваем историю
+        if (LogMessages.Count > 40)
         {
             LogMessages.RemoveAt(0);
         }
@@ -38,6 +42,13 @@ public class WorldState
     public void SpawnEntity(Entity entity)
     {
         _entities[entity.Id] = entity;
+        
+        // 2. Если спавнится Актор — сразу добавляем его в кэш-список
+        if (entity is Actor actor)
+        {
+            _activeActors.Add(actor);
+        }
+        
         AddLog($"Сущность '{entity.Name}' успешно призвана в мир.");
     }
 
@@ -59,6 +70,9 @@ public class WorldState
                 {
                     actor.Queue.Clear();
                     actor.Queue.CleanUp(this); 
+                    
+                    // 3. Безопасно удаляем из кэша акторов при уничтожении
+                    _activeActors.Remove(actor);
                 }
 
                 _entities.Remove(id);
@@ -78,25 +92,20 @@ public class WorldState
 
     public IEnumerable<Entity> GetAllEntities() => _entities.Values;
 
-    public IEnumerable<Actor> GetAllActors()
-    {
-        foreach (var entity in _entities.Values)
-        {
-            if (entity is Actor actor)
-            {
-                yield return actor;
-            }
-        }
-    }
+    // 4. Возвращаем напрямую ссылку на список без каких-либо ленивых вычислений и аллокаций
+    public IReadOnlyList<Actor> GetAllActors() => _activeActors;
 
     public Entity? GetEntityAt(HexCoords coords)
     {
-        foreach (var entity in _entities.Values)
+        // Оптимизируем поиск физических объектов по кэшу акторов, так как статические объекты пока не блокируют клетки
+        int count = _activeActors.Count;
+        for (int i = 0; i < count; i++)
         {
-            if (entity.Position == coords)
+            var actor = _activeActors[i];
+            if (actor.Position == coords)
             {
-                if (entity.Health != null && entity.Health.IsDead) continue;
-                return entity;
+                if (actor.Health != null && actor.Health.IsDead) continue;
+                return actor;
             }
         }
         return null;

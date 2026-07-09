@@ -1,4 +1,9 @@
-﻿using DSLDungeon.Game;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using DSLDungeon.Game;
 using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Core.Actions;
 using DSLDungeon.Game.Core.Time;
@@ -13,32 +18,69 @@ public class GameService : IDisposable
 {
     public WorldState World { get; private set; }
     public GameLoop Loop { get; private set; }
-    
-    // Наш промежуточный агент
     public GameUiAgent UiAgent { get; } = new();
 
     private bool _isRunning;
     private CancellationTokenSource? _cts;
 
+    public bool IsRunning => _isRunning;
+
     public GameService()
     {
-        EventPool.Initialize();
-
-        var map = new HexMap(3);
+        // 1. Оптимальный размер карты для 150 крипов: 100x100 (10 000 тайлов) - грузится за 50мс!
+        var map = new HexMap(100, 100);
         World = new WorldState(map);
         Loop = new GameLoop(World);
 
-        var hero = new Hero(new EntityId(1, 1), "Рыцарь", new HexCoords(0, 0), World, maxHp: 100);
-        var sword = new Weapon("Стальной меч", damage: 15, range: 1, attackSpeed: 0.6f, isRanged: false);
+        // 2. Спавним Рыцаря точно по центру (50, 50)
+        var heroId = EntityIdGenerator.Next();
+        var hero = new Hero(heroId, "Рыцарь", new HexCoords(50, 50), World, maxHp: 2000);
+        
+        var sword = new Weapon("Меч правосудия", damage: 100, range: 1, attackSpeed: 0.15f, isRanged: false);
         hero.Inventory!.EquippedWeapon = sword;
-
-        var orc = new Orc(new EntityId(2, 1), "Орк", new HexCoords(2, 0), World, maxHp: 40);
-
+    
+        if (hero.Health != null)
+        {
+            hero.Health.RegenRate = 50; 
+        }
         World.SpawnEntity(hero);
-        World.SpawnEntity(orc);
 
-        // Синхронизируем начальное состояние до старта
-        UiAgent.SyncFromGame(World);
+        // 3. Спавним 150 орков
+        SpawnEnemyHorde(targetCount: 150);
+
+        UiAgent.SyncFromGame(World, 0f);
+    }
+
+    private void SpawnEnemyHorde(int targetCount)
+    {
+        var random = new Random();
+        
+        var passableTiles = World.Map.GetAllTiles()
+            .Where(t => t.IsPassable)
+            .ToList();
+
+        int spawnedCount = 0;
+
+        while (spawnedCount < targetCount && passableTiles.Count > 0)
+        {
+            int index = random.Next(passableTiles.Count);
+            var tile = passableTiles[index];
+            passableTiles.RemoveAt(index);
+
+            // Исключаем центральную клетку героя (50, 50)
+            if (tile.Coords.Q == 50 && tile.Coords.R == 50)
+                continue;
+
+            var orcId = EntityIdGenerator.Next();
+            var orc = new Orc(orcId, $"Орк #{spawnedCount + 1}", tile.Coords, World, maxHp: 40);
+            var dagger = new Weapon("Ржавый кинжал", damage: 3, range: 1, attackSpeed: 1.0f, isRanged: false);
+            orc.Inventory!.EquippedWeapon = dagger;
+
+            World.SpawnEntity(orc);
+            spawnedCount++;
+        }
+
+        World.AddLog($"[Режиссер] В бескрайних землях материализовалась орда из {spawnedCount} орков!");
     }
 
     public void Start()
@@ -46,7 +88,8 @@ public class GameService : IDisposable
         if (_isRunning) return;
         _isRunning = true;
         _cts = new CancellationTokenSource();
-        TimeSystem.Initialize();
+
+        Loop.Time.Initialize();
 
         _ = RunLoopAsync(_cts.Token);
     }
@@ -59,24 +102,15 @@ public class GameService : IDisposable
         {
             while (_isRunning && !token.IsCancellationRequested && await timer.WaitForNextTickAsync(token))
             {
-                // 1. Считываем буфер ввода (безопасно применяем скорость)
                 Loop.GameTimeChannel.TimeScale = UiAgent.PendingSpeed;
 
-                // 2. Симуляция кадра игры
                 Loop.Update();
 
-                // 3. Заполняем буфер вывода (делаем снимок состояния)
-                UiAgent.SyncFromGame(World);
-
-                // 4. КООПЕРАТИВНЫЙ YIELD: явно отдаем квант времени браузеру.
-                // Это предотвращает потоковое голодание JS и делает слайдер шелковистым.
-                await Task.Delay(1, token); 
+                float dt = Loop.GameTimeChannel.Delta.Value;
+                UiAgent.SyncFromGame(World, dt);
             }
         }
-        catch (OperationCanceledException)
-        {
-            // Корректная остановка
-        }
+        catch (OperationCanceledException) { }
     }
 
     public void Stop()

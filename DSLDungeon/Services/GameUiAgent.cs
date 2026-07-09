@@ -1,72 +1,76 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using DSLDungeon.Game.Core;
+using DSLDungeon.Game.Core.Actions.Systems;
 using DSLDungeon.Game.Entities;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Services;
 
-public class EntitySnapshot
-{
-    public EntityId Id { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string Position { get; set; } = string.Empty;
-    public int CurrentHp { get; set; }
-    public int MaxHp { get; set; }
-    public bool IsDead { get; set; }
-}
-
-public class TileSnapshot
-{
-    public int Q { get; init; }
-    public int R { get; init; }
-    public string TerrainClass { get; set; } = string.Empty;
-    public string SvgPoints { get; init; } = string.Empty;
-    public float CenterX { get; init; }
-    public float CenterY { get; init; }
-    
-    // --- ПРЕДРАССЧИТАННЫЕ СТРОКИ ДЛЯ SVG (Исключают баги локализации с запятой) ---
-    public string SvgCenterX => CenterX.ToString("0.0", CultureInfo.InvariantCulture);
-    public string SvgCenterY => CenterY.ToString("0.0", CultureInfo.InvariantCulture);
-    public string SvgCoordsY => (CenterY + 13).ToString("0.0", CultureInfo.InvariantCulture);
-    public string SvgHaloY => (CenterY - 4).ToString("0.0", CultureInfo.InvariantCulture);
-    public string SvgIconY => (CenterY + 2).ToString("0.0", CultureInfo.InvariantCulture);
-    public string SvgHpX => (CenterX - 12).ToString("0.0", CultureInfo.InvariantCulture);
-    public string SvgHpY => (CenterY - 21).ToString("0.0", CultureInfo.InvariantCulture);
-    
-    public string ActorLabel { get; set; } = string.Empty;
-    public string ActorClass { get; set; } = string.Empty;
-    public int ActorHpPercent { get; set; } = 100;
-
-    // Динамический расчет ширины полоски здоровья с точкой
-    public string SvgHpWidth => (24f * ActorHpPercent / 100f).ToString("0.0", CultureInfo.InvariantCulture);
-}
-
 public class GameUiAgent
 {
-    public List<EntitySnapshot> Entities { get; private set; } = new();
+    // --- ПУБЛИЧНЫЕ БУФЕРЫ ВЫВОДА (Ссылки стабильны, списки очищаются на каждом тике) ---
+    public List<EntitySnapshot> Entities { get; } = new();
     public List<TileSnapshot> MapTiles { get; private set; } = new();
-    public List<string> Logs { get; private set; } = new();
-    
-    private readonly Dictionary<EntityId, EntitySnapshot> _persistentInspector = new();
-    private readonly List<TileSnapshot> _cachedMapTiles = new();
-    private bool _mapInitialized = false;
+    public List<ActorSnapshot> Actors { get; } = new();
+    public List<MovementArrowSnapshot> ActiveArrows { get; } = new();
+    public List<AttackArrowSnapshot> ActiveAttacks { get; } = new();
+    public List<FloatingTextParticle> ActiveParticles { get; } = new();
+    public List<string> Logs { get; } = new();
 
+    // --- ПАРАМЕТРЫ ВВОДА ---
     public float PendingSpeed { get; set; } = 1.0f;
+
+    // --- ВНУТРЕННИЙ КЭШ ДЛЯ ИСКЛЮЧЕНИЯ АЛЛОКАЦИЙ ---
+    private readonly Dictionary<EntityId, EntitySnapshot> _persistentInspector = new();
+    private readonly Dictionary<EntityId, ActorSnapshot> _persistentActors = new();
+    private readonly List<TileSnapshot> _cachedMapTiles = new();
+    private readonly List<FloatingTextParticle> _particles = new();
+
+    // Кэшированные коллекции для исключения локальных аллокаций в циклах
+    private readonly HashSet<EntityId> _activeIdsCache = new();
+    private readonly List<EntityId> _idsToRemoveCache = new();
+
+    private bool _mapInitialized;
 
     public event Action? OnRenderTick;
 
-    public void SyncFromGame(WorldState world)
-    {
-        // 1. Синхронизация логов
-        Logs = new List<string>(world.LogMessages);
+    /// <summary>
+    /// Предоставляет внешний доступ ко всему кэшу сгенерированной карты.
+    /// Используется компонентом HexGrid.razor для высокопроизводительного куллинга на лету.
+    /// </summary>
+    public IReadOnlyList<TileSnapshot> AllCachedTiles => _cachedMapTiles;
 
-        // 2. Синхронизация существ
-        var activeIds = new HashSet<EntityId>();
+    public void SyncFromGame(WorldState world, float deltaTime)
+    {
+        SyncLogs(world);
+        SyncEntityInspector(world);
+        SyncMapGeometry(world);
+        SyncActiveParticles(world, deltaTime);
+        SyncActorsAndVectors(world);
+
+        OnRenderTick?.Invoke();
+    }
+
+    #region Приватные шаги конвейера рендеринга
+
+    private void SyncLogs(WorldState world)
+    {
+        Logs.Clear();
+        int logCount = world.LogMessages.Count;
+        for (int i = 0; i < logCount; i++)
+        {
+            Logs.Add(world.LogMessages[i]);
+        }
+    }
+
+    private void SyncEntityInspector(WorldState world)
+    {
+        _activeIdsCache.Clear();
+        
         foreach (var entity in world.GetAllEntities())
         {
-            activeIds.Add(entity.Id);
+            _activeIdsCache.Add(entity.Id);
             
             if (_persistentInspector.TryGetValue(entity.Id, out var snapshot))
             {
@@ -89,70 +93,174 @@ public class GameUiAgent
             }
         }
 
-        var idsToRemove = new List<EntityId>();
+        _idsToRemoveCache.Clear();
         foreach (var key in _persistentInspector.Keys)
         {
-            if (!activeIds.Contains(key))
-            {
-                idsToRemove.Add(key);
-            }
+            if (!_activeIdsCache.Contains(key)) _idsToRemoveCache.Add(key);
         }
-        foreach (var id in idsToRemove)
+        
+        int removeCount = _idsToRemoveCache.Count;
+        for (int i = 0; i < removeCount; i++)
         {
-            _persistentInspector.Remove(id);
+            _persistentInspector.Remove(_idsToRemoveCache[i]);
         }
 
-        Entities = new List<EntitySnapshot>(_persistentInspector.Values);
+        Entities.Clear();
+        foreach (var snap in _persistentInspector.Values)
+        {
+            Entities.Add(snap);
+        }
+    }
 
-        // 3. Инициализация геометрии
+    private void SyncMapGeometry(WorldState world)
+    {
         if (!_mapInitialized)
         {
             InitializeMapGeometry(world);
             _mapInitialized = true;
         }
 
-        // 4. Поиск существ на тайлах
-        var entityOnTileMap = new Dictionary<HexCoords, Entity>();
-        foreach (var entity in world.GetAllEntities())
-        {
-            if (entity.Health?.IsDead == true) continue;
-            entityOnTileMap[entity.Position] = entity;
-        }
-
-        int tileCount = _cachedMapTiles.Count;
-        for (int i = 0; i < tileCount; i++)
-        {
-            var tile = _cachedMapTiles[i];
-            var coords = new HexCoords(tile.Q, tile.R);
-
-            if (entityOnTileMap.TryGetValue(coords, out var entity))
-            {
-                tile.ActorLabel = entity.Name.Contains("Рыцарь") ? "♞" : "👹";
-                tile.ActorClass = entity.Name.Contains("Рыцарь") ? "hero-actor" : "orc-actor";
-                
-                int maxHp = entity.Health?.MaxHp ?? 100;
-                int currentHp = entity.Health?.CurrentHp ?? 100;
-                tile.ActorHpPercent = (int)((float)currentHp / maxHp * 100);
-            }
-            else
-            {
-                tile.ActorLabel = string.Empty;
-                tile.ActorClass = string.Empty;
-                tile.ActorHpPercent = 0;
-            }
-        }
-
         MapTiles = _cachedMapTiles; 
-        OnRenderTick?.Invoke();
+    }
+
+    private void SyncActiveParticles(WorldState world, float deltaTime)
+    {
+        int triggerCount = world.PendingDamageTriggers.Count;
+        for (int i = 0; i < triggerCount; i++)
+        {
+            var trigger = world.PendingDamageTriggers[i];
+            var (cx, cy) = GetTilePixelCenter(trigger.Coords);
+            
+            _particles.Add(new FloatingTextParticle
+            {
+                X = cx,
+                Y = cy - 20f,
+                Text = trigger.Text,
+                ColorClass = trigger.Type == "Heal" ? "particle-heal" : "particle-dmg"
+            });
+        }
+        world.PendingDamageTriggers.Clear();
+
+        for (int i = _particles.Count - 1; i >= 0; i--)
+        {
+            var p = _particles[i];
+            p.Y += p.VelocityY * deltaTime;
+            p.Lifetime -= deltaTime;
+            
+            if (p.Lifetime <= 0)
+            {
+                _particles.RemoveAt(i);
+            }
+        }
+        
+        ActiveParticles.Clear();
+        ActiveParticles.AddRange(_particles);
+    }
+
+    private void SyncActorsAndVectors(WorldState world)
+    {
+        Actors.Clear();
+        ActiveArrows.Clear();
+        ActiveAttacks.Clear();
+
+        var entities = world.GetAllEntities();
+        foreach (var entity in entities)
+        {
+            if (entity is Actor actor && actor.Health?.IsDead != true)
+            {
+                var (startX, startY) = GetTilePixelCenter(actor.Position);
+                float visualX = startX;
+                float visualY = startY;
+
+                var activeEvent = actor.Queue.GetActiveEvent();
+
+                if (activeEvent is MoveEvent moveEvent)
+                {
+                    var (targetX, targetY) = GetTilePixelCenter(moveEvent.TargetCoords);
+                    float progress = Math.Clamp(moveEvent.ElapsedTime / moveEvent.Duration, 0f, 1f);
+
+                    visualX = startX + (targetX - startX) * progress;
+                    visualY = startY + (targetY - startY) * progress;
+
+                    ActiveArrows.Add(new MovementArrowSnapshot
+                    {
+                        StartX = startX,
+                        StartY = startY,
+                        TargetX = targetX,
+                        TargetY = targetY,
+                        ActorClass = actor.Name.Contains("Рыцарь") ? "hero-actor" : "orc-actor"
+                    });
+                }
+                else if (activeEvent is MeleeAttackEvent attackEvent)
+                {
+                    if (world.TryGetEntity(attackEvent.TargetId, out var target))
+                    {
+                        var (targetX, targetY) = GetTilePixelCenter(target.Position);
+                        
+                        ActiveAttacks.Add(new AttackArrowSnapshot
+                        {
+                            StartX = startX,
+                            StartY = startY,
+                            TargetX = targetX,
+                            TargetY = targetY
+                        });
+                    }
+                }
+
+                int maxHp = actor.Health?.MaxHp ?? 100;
+                int currentHp = actor.Health?.CurrentHp ?? 100;
+                float hpPercent = (float)currentHp / maxHp;
+
+                if (!_persistentActors.TryGetValue(actor.Id, out var actorSnap))
+                {
+                    actorSnap = new ActorSnapshot { Id = actor.Id };
+                    _persistentActors[actor.Id] = actorSnap;
+                }
+
+                actorSnap.Name = actor.Name;
+                actorSnap.Label = actor.Name.Contains("Рыцарь") ? "♞" : "👹";
+                actorSnap.Class = actor.Name.Contains("Рыцарь") ? "hero-actor" : "orc-actor";
+                
+                actorSnap.PixelX = visualX;
+                actorSnap.PixelY = visualY;
+                actorSnap.HpPercent = hpPercent;
+
+                Actors.Add(actorSnap);
+            }
+        }
+
+        if (_persistentActors.Count > Actors.Count * 2) 
+        {
+            _persistentActors.Clear(); 
+        }
+    }
+
+    #endregion
+
+    #region Вспомогательная математика гексов
+
+    private (float X, float Y) GetTilePixelCenter(HexCoords coords)
+    {
+        const float size = 36f; 
+        const float offsetX = 600f; // Сдвиг для безопасного укладывания координат в плюс
+        const float offsetY = 600f; 
+        const float sqrt3 = 1.73205f;
+
+        float cx = offsetX + size * (sqrt3 * coords.Q + sqrt3 / 2f * coords.R);
+        float cy = offsetY + size * (1.5f * coords.R);
+        return (cx, cy);
     }
 
     private void InitializeMapGeometry(WorldState world)
     {
         _cachedMapTiles.Clear();
-        const float size = 28f; 
-        const float offsetX = 200f; 
-        const float offsetY = 180f; 
+        const float size = 36f; 
+        const float offsetX = 600f; 
+        const float offsetY = 600f; 
         const float sqrt3 = 1.73205f;
+
+        float width = sqrt3 * size;
+        float height = 2f * size;
 
         foreach (var tile in world.Map.GetAllTiles())
         {
@@ -164,25 +272,85 @@ public class GameUiAgent
                 Q = tile.Coords.Q,
                 R = tile.Coords.R,
                 TerrainClass = tile.Terrain.ToString().ToLower(),
-                SvgPoints = CalculateHexPoints(cx, cy, size),
+                Left = cx - (width / 2f),
+                Top = cy - (height / 2f),
+                Width = width,
+                Height = height,
                 CenterX = cx,
-                CenterY = cy,
-                ActorLabel = string.Empty,
-                ActorClass = string.Empty
+                CenterY = cy
             });
         }
     }
 
-    private string CalculateHexPoints(float cx, float cy, float r)
-    {
-        var points = new List<string>(6);
-        for (int i = 0; i < 6; i++)
-        {
-            double angleRad = Math.PI / 180 * (60 * i - 30);
-            double px = cx + r * Math.Cos(angleRad);
-            double py = cy + r * Math.Sin(angleRad);
-            points.Add($"{px.ToString("0.0", CultureInfo.InvariantCulture)},{py.ToString("0.0", CultureInfo.InvariantCulture)}");
-        }
-        return string.Join(" ", points);
-    }
+    #endregion
 }
+
+#region --- ТАКТИЧЕСКИЕ VIEW-MODELS ДЛЯ UI (Полностью изменяемые для Zero-Allocation) ---
+
+public class EntitySnapshot
+{
+    public EntityId Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Position { get; set; } = string.Empty;
+    public int CurrentHp { get; set; }
+    public int MaxHp { get; set; }
+    public bool IsDead { get; set; }
+}
+
+public class TileSnapshot
+{
+    public int Q { get; set; }
+    public int R { get; set; }
+    public string TerrainClass { get; set; } = string.Empty;
+    
+    public double Left { get; set; }
+    public double Top { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+
+    public double CenterX { get; set; }
+    public double CenterY { get; set; }
+}
+
+public class ActorSnapshot
+{
+    public EntityId Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Class { get; set; } = string.Empty;
+    
+    public double PixelX { get; set; }
+    public double PixelY { get; set; }
+    public float HpPercent { get; set; }
+}
+
+public class MovementArrowSnapshot
+{
+    public double StartX { get; set; }
+    public double StartY { get; set; }
+    public double TargetX { get; set; }
+    public double TargetY { get; set; }
+    public string ActorClass { get; set; } = string.Empty;
+}
+
+public class AttackArrowSnapshot
+{
+    public double StartX { get; set; }
+    public double StartY { get; set; }
+    public double TargetX { get; set; }
+    public double TargetY { get; set; }
+}
+
+public class FloatingTextParticle
+{
+    public float X { get; set; }
+    public float Y { get; set; }
+    public string Text { get; set; } = string.Empty;
+    public string ColorClass { get; set; } = string.Empty;
+    public float VelocityY { get; set; } = -35f; 
+    public float Lifetime { get; set; } = 1.0f;  
+
+    public float Opacity => Math.Clamp(Lifetime / 1.0f, 0f, 1f);
+}
+
+#endregion
