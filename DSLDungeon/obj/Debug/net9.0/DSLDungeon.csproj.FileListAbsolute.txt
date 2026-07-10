@@ -1101,10 +1101,10 @@ D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\DSLDungeon.pdb
 D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\ref\DSLDungeon.dll
 D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\iocdl3uavn-v0fee6wzmk.gz
 D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\w5go7hetuz-v0fee6wzmk.gz
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.tgg8s2f78j.wasm
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.29hbavpcr2.pdb
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.tgg8s2f78j.wasm.gz
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.29hbavpcr2.pdb.gz
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\pakhgk0rg6-tgg8s2f78j.gz
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\8qhi1ejbit-29hbavpcr2.gz
-D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\upx589h7zo-d5yhcgmx1y.gz
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.prw06j3icf.wasm
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.hd1xy3jnnc.pdb
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.prw06j3icf.wasm.gz
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\bin\Debug\net9.0\wwwroot\_framework\DSLDungeon.hd1xy3jnnc.pdb.gz
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\pakhgk0rg6-prw06j3icf.gz
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\8qhi1ejbit-hd1xy3jnnc.gz
+D:\MyProjects\DSLDungeon\DSLDungeon\DSLDungeon\obj\Debug\net9.0\compressed\upx589h7zo-vq6dfjuagb.gz
