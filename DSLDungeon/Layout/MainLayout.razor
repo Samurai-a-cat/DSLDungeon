@@ -1,13 +1,13 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="app-container">
-    <!-- Левый сайдбар (Всегда на экране) -->
-    <aside class="sidebar">
+<div class="page-wrapper">
+    <!-- Боковое меню (твоё существующее) -->
+    <div class="sidebar">
         <NavMenu />
-    </aside>
-
-    <!-- Основной контент страницы справа (Занимает все оставшееся место) -->
-    <main class="main-content">
+    </div>
+    
+    <!-- Основной контент -->
+    <div class="main-content">
         @Body
-    </main>
+    </div>
 </div>

@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using DSLDungeon.Game;
 using DSLDungeon.Game.Core;
-using DSLDungeon.Game.Core.Actions;
-using DSLDungeon.Game.Core.Time;
 using DSLDungeon.Game.Entities;
 using DSLDungeon.Game.Entities.Characters;
+using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Items;
 using DSLDungeon.Game.Grid;
 
@@ -27,60 +21,46 @@ public class GameService : IDisposable
 
     public GameService()
     {
-        // 1. Оптимальный размер карты для 150 крипов: 100x100 (10 000 тайлов) - грузится за 50мс!
-        var map = new HexMap(100, 100);
+        var map = new HexMap(7, 7); // Маленькая арена
         World = new WorldState(map);
         Loop = new GameLoop(World);
 
-        // 2. Спавним Рыцаря точно по центру (50, 50)
+        // === РЫЦАРЬ ===
         var heroId = EntityIdGenerator.Next();
-        var hero = new Hero(heroId, "Рыцарь", new HexCoords(50, 50), World, maxHp: 2000);
+        var hero = HeroFactory.CreateKnight(heroId, new HexCoords(1, 1), World);
         
-        var sword = new Weapon("Меч правосудия", damage: 100, range: 1, attackSpeed: 0.15f, isRanged: false);
-        hero.Inventory!.EquippedWeapon = sword;
-    
-        if (hero.Health != null)
-        {
-            hero.Health.RegenRate = 50; 
-        }
+        var sword = WeaponPresets.CreateSwordOfJustice();
+        hero.GetComponent<EquipmentComponent>()?.Equip(EquipmentSlot.MainHand, sword);
+        
+        hero.AddComponent(new ComboComponent());
+        hero.AddComponent(new PositionTrackerComponent());
+        
+        // Для демонстрации: высокая регенерация чтобы дуэль длилась
+        if (hero.GetComponent<HealthComponent>() is { } hp)
+            hp.RegenRate = 5;
+
         World.SpawnEntity(hero);
 
-        // 3. Спавним 150 орков
-        SpawnEnemyHorde(targetCount: 150);
+        // === ОРК-ЧЕМПИОН ===
+        var orcId = EntityIdGenerator.Next();
+        var orc = OrcFactory.CreateChampion(orcId, "Орк-Чемпион Грумш", new HexCoords(4, 3), World);
+        
+        var axe = WeaponPresets.CreateOrcChampionAxe();
+        orc.GetComponent<EquipmentComponent>()?.Equip(EquipmentSlot.MainHand, axe);
+        
+        orc.AddComponent(new ComboComponent());
+        orc.AddComponent(new PositionTrackerComponent());
+
+        World.SpawnEntity(orc);
+
+        World.AddLog("╔══════════════════════════════════════════════════════════════╗");
+        World.AddLog("║         ДУЭЛЬ: Рыцарь vs Орк-Чемпион Грумш                 ║");
+        World.AddLog("╠══════════════════════════════════════════════════════════════╣");
+        World.AddLog("║  Рыцарь:  Сила 15 | Ловк 10 | Инт 8  | Тел 12 | Меч правосудия  ║");
+        World.AddLog("║  Грумш:   Сила 20 | Ловк 8  | Инт 4  | Тел 18 | Топор чемпиона  ║");
+        World.AddLog("╚══════════════════════════════════════════════════════════════╝");
 
         UiAgent.SyncFromGame(World, 0f);
-    }
-
-    private void SpawnEnemyHorde(int targetCount)
-    {
-        var random = new Random();
-        
-        var passableTiles = World.Map.GetAllTiles()
-            .Where(t => t.IsPassable)
-            .ToList();
-
-        int spawnedCount = 0;
-
-        while (spawnedCount < targetCount && passableTiles.Count > 0)
-        {
-            int index = random.Next(passableTiles.Count);
-            var tile = passableTiles[index];
-            passableTiles.RemoveAt(index);
-
-            // Исключаем центральную клетку героя (50, 50)
-            if (tile.Coords.Q == 50 && tile.Coords.R == 50)
-                continue;
-
-            var orcId = EntityIdGenerator.Next();
-            var orc = new Orc(orcId, $"Орк #{spawnedCount + 1}", tile.Coords, World, maxHp: 40);
-            var dagger = new Weapon("Ржавый кинжал", damage: 3, range: 1, attackSpeed: 1.0f, isRanged: false);
-            orc.Inventory!.EquippedWeapon = dagger;
-
-            World.SpawnEntity(orc);
-            spawnedCount++;
-        }
-
-        World.AddLog($"[Режиссер] В бескрайних землях материализовалась орда из {spawnedCount} орков!");
     }
 
     public void Start()

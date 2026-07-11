@@ -1,15 +1,15 @@
-﻿using DSLDungeon.Game.Entities;
+using DSLDungeon.Game.Entities;
 using DSLDungeon.Game.Entities.Characters;
+using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Items;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game.Core.Actions.Systems;
 
-// --- УНИФИЦИРОВАННОЕ СОБЫТИЕ СПАВНА ---
 [PoolConfig(10)]
 public class SpawnUnitEvent : QueueEvent<UnitSpawnerSystem>
 {
-    public override int Priority => 4; // Средний приоритет
+    public override int Priority => 4;
 
     public string UnitType { get; set; } = string.Empty;
     public string UnitName { get; set; } = string.Empty;
@@ -24,14 +24,11 @@ public class SpawnUnitEvent : QueueEvent<UnitSpawnerSystem>
     }
 }
 
-// --- УНИФИЦИРОВАННАЯ СИСТЕМА СПАВНА ---
-[SystemOrder(40)] // Выполняется в фазе обработки действий
+[SystemOrder(40)]
 public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
 {
-    // Расширяем стандартный Update, чтобы он проверял И очередь мира, И очереди персонажей
     public override void Update(float deltaTime, WorldState world)
     {
-        // 1. Сначала проверяем глобальную очередь мира (спавн от Рассказчика)
         if (world.WorldQueue.GetActiveEvent() is SpawnUnitEvent globalSpawn)
         {
             if (globalSpawn.Status == EventStatus.Pending)
@@ -42,18 +39,15 @@ public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
             }
         }
 
-        // 2. Затем запускаем базовый Update для обработки призывов локальных акторов (игроков)
         base.Update(deltaTime, world);
     }
 
-    // Вызывается для локального актора (например, Рыцарь кастует призыв)
     protected override void OnUpdate(float deltaTime, Actor actor, SpawnUnitEvent ev, WorldState world)
     {
         ExecuteSpawn(ev, world);
         ev.Status = EventStatus.Completed;
     }
 
-    // Единое место материализации существа в мире
     private void ExecuteSpawn(SpawnUnitEvent ev, WorldState world)
     {
         var id = EntityIdGenerator.Next();
@@ -61,17 +55,16 @@ public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
 
         if (ev.UnitType == "Orc")
         {
-            var orc = new Orc(id, ev.UnitName, ev.SpawnCoords, world, maxHp: 40);
-        
-            // Каждый новый орк волны получает ржавый кинжал (3 урона, скорость 1.0с)
-            var dagger = new Weapon("Ржавый кинжал", damage: 3, range: 1, attackSpeed: 1.0f, isRanged: false);
-            orc.Inventory!.EquippedWeapon = dagger;
+            var orc = OrcFactory.CreateGrunt(id, ev.UnitName, ev.SpawnCoords, world, waveLevel: 1);
+
+            var dagger = WeaponPresets.CreateRustyDagger();
+            orc.GetComponent<EquipmentComponent>()?.Equip(EquipmentSlot.MainHand, dagger);
 
             newUnit = orc;
         }
         else if (ev.UnitType == "SummonedMinion")
         {
-            newUnit = new Hero(id, ev.UnitName, ev.SpawnCoords, world, maxHp: 30);
+            newUnit = HeroFactory.CreateKnight(id, ev.SpawnCoords, world);
         }
         else
         {
@@ -80,6 +73,6 @@ public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
         }
 
         world.SpawnEntity(newUnit);
-        world.AddLog($"[Спавнер] Юнит '{newUnit.Name}' ({newUnit.Id.ToString()}) материализовался в координате {newUnit.Position.ToString()}");
+        world.AddLog($"[Спавнер] Юнит '{newUnit.Name}' ({newUnit.Id}) материализовался в координате {newUnit.Position}");
     }
 }

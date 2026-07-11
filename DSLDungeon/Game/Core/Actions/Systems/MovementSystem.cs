@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using DSLDungeon.Game.Entities;
+using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game.Core.Actions.Systems;
@@ -138,6 +139,10 @@ public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem, IGam
         if (ev.ElapsedTime >= ev.Duration)
         {
             actor.Position = ev.TargetCoords;
+        
+            // ← сюда
+            actor.GetComponent<PositionTrackerComponent>()?.OnMoved(ev.TargetCoords);
+        
             ev.Status = EventStatus.Completed;
         }
     }

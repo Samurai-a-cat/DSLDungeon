@@ -1,4 +1,5 @@
-﻿using DSLDungeon.Game.Entities;
+using DSLDungeon.Game.Entities;
+using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game.Core.Actions.Systems;
@@ -17,7 +18,7 @@ public class NarratorSystem : IGameSystem
             bool anyOrcAlive = false;
             foreach (var actor in world.GetAllActors())
             {
-                if (actor.Name.Contains("Орк") && actor.Health is { IsDead: false })
+                if (actor.Name.Contains("Орк") && actor.GetComponent<HealthComponent>() is { IsDead: false })
                 {
                     anyOrcAlive = true;
                     break;
@@ -28,10 +29,9 @@ public class NarratorSystem : IGameSystem
             {
                 _waveInProgress = false;
                 _currentWave++;
-                
+
                 world.AddLog($"[Режиссер] Волна зачищена! Мобилизация сил для Волны {_currentWave}...");
 
-                // Ищем случайную свободную и проходимую координату на карте
                 HexCoords spawnCoords = GetRandomPassableCoords(world);
 
                 var spawnEvent = EventPool.Get<SpawnUnitEvent>();
@@ -46,16 +46,12 @@ public class NarratorSystem : IGameSystem
         }
     }
 
-    /// <summary>
-    /// Сканирует карту и возвращает случайную проходимую свободную клетку
-    /// </summary>
     private HexCoords GetRandomPassableCoords(WorldState world)
     {
         var candidates = new List<HexCoords>();
 
         foreach (var tile in world.Map.GetAllTiles())
         {
-            // Проверяем, проходим ли тайл и нет ли на нем какого-либо объекта
             if (tile.IsPassable && world.GetEntityAt(tile.Coords) == null)
             {
                 candidates.Add(tile.Coords);
@@ -67,7 +63,6 @@ public class NarratorSystem : IGameSystem
             return candidates[_random.Next(candidates.Count)];
         }
 
-        // Если свободных клеток нет (что маловероятно при радиусе 3), спавним в дефолтной
         return new HexCoords(2, 0); 
     }
 }

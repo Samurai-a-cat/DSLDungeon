@@ -2,55 +2,117 @@
 @using System.Globalization
 @using System.Linq
 @using DSLDungeon.Services
-@using Microsoft.JSInterop
 @implements IDisposable
 @inject GameService Game
 @inject GameUiAgent UiAgent
 @inject IJSRuntime JSRuntime
 
-<div class="viewport-wrapper">
-    <!-- Левая панель: Нативный Canvas от SkiaSharp -->
-    <div class="game-board">
+<div class="game-layout">
+    
+    <!-- ===== ВЕРХ: КАНВАС ===== -->
+    <div class="main-game-area">
         <div class="canvas-container" id="skia-canvas-container">
-            
             <SKCanvasView @ref="_canvasView" 
                           OnPaintSurface="OnPaintSurface" 
                           class="skia-canvas" />
             
-            <!-- Панель управления -->
+            <!-- Управление -->
             <div class="controls-overlay">
-                <div class="control-group">
-                    <button class="btn-control @(Game.IsRunning ? "btn-active-start" : "")" 
+                <div class="control-row">
+                    <button class="btn @(Game.IsRunning ? "btn-active" : "")" 
                             @onclick="StartGame">
-                        СТАРТ
+                        ▶ СТАРТ
                     </button>
-                    <button class="btn-control @(!Game.IsRunning ? "btn-active-stop" : "")" 
+                    <button class="btn @(!Game.IsRunning ? "btn-stop" : "")" 
                             @onclick="StopGame">
-                        СТОП
+                        ■ СТОП
+                    </button>
+                    <button class="btn btn-restart" 
+                            @onclick="RestartGame">
+                        ↻ РЕСТАРТ
                     </button>
                 </div>
                 
-                <div class="control-group slider-group">
-                    <span class="speed-label">Скорость: @UiAgent.PendingSpeed.ToString("0.0", CultureInfo.InvariantCulture)x</span>
-                    <input type="range" min="0" max="30" 
+                <div class="speed-control">
+                    <span class="speed-label">⚡ @UiAgent.PendingSpeed.ToString("0.0", CultureInfo.InvariantCulture)x</span>
+                    <input type="range" min="0" max="50" 
                            value="@((int)(UiAgent.PendingSpeed * 10))" 
                            @oninput="OnSpeedInput" 
                            class="speed-slider" />
                 </div>
             </div>
-            
+
+            <!-- Инфо о дуэли -->
+            <div class="duel-info">
+                @if (UiAgent.Actors.Count >= 2)
+                {
+                    var hero = UiAgent.Actors.FirstOrDefault(a => a.Class == "hero-actor");
+                    var orc = UiAgent.Actors.FirstOrDefault(a => a.Class == "orc-actor");
+                    @if (hero != null && orc != null)
+                    {
+                        <div class="duel-bar">
+                            <div class="fighter hero">
+                                <span class="fighter-icon">♞</span>
+                                <div class="hp-bar"><div class="hp-fill hero-hp" style="width:@(hero.HpPercent*100)%"></div></div>
+                                <span class="fighter-name">@hero.Name</span>
+                            </div>
+                            <span class="vs">VS</span>
+                            <div class="fighter orc">
+                                <span class="fighter-icon">👹</span>
+                                <div class="hp-bar"><div class="hp-fill orc-hp" style="width:@(orc.HpPercent*100)%"></div></div>
+                                <span class="fighter-name">@orc.Name</span>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
         </div>
     </div>
 
-    <!-- Правая панель: Игровой лог -->
-    <div class="game-sidebar">
-        <div class="log-container">
-            <h4 class="log-title">Хроника боя</h4>
-            <div class="log-messages">
-                @foreach (var log in UiAgent.Logs)
-                {
-                    <div class="log-entry">@log</div>
-                }
+    <!-- ===== НИЗ: ЛОГИ + ИНСПЕКТОР ===== -->
+    <div class="bottom-panel-wrapper">
+        <div class="resize-handle"></div>
+        <div class="bottom-panel">
+
+            <!-- Логи -->
+            <div class="panel log-panel">
+                <div class="panel-header">
+                    <span class="panel-title">📜 Хроника боя</span>
+                    <button class="btn-clear" @onclick="ClearLogs">Очистить</button>
+                </div>
+                <div class="log-messages" @ref="_logContainer">
+                    @foreach (var log in UiAgent.Logs)
+                    {
+                        <div class="@GetLogClass(log)">@log</div>
+                    }
+                </div>
+            </div>
+
+            <!-- Инспектор -->
+            <div class="panel inspector-panel">
+                <div class="panel-header">
+                    <span class="panel-title">🔍 Инспектор</span>
+                </div>
+                <div class="inspector-content">
+                    @foreach (var actor in UiAgent.Actors)
+                    {
+                        <div class="actor-card @(actor.Class)">
+                            <div class="actor-card-header">
+                                <span class="actor-emoji">@(actor.Class == "hero-actor" ? "♞" : "👹")</span>
+                                <span class="actor-name">@actor.Name</span>
+                            </div>
+                            <div class="actor-stats">
+                                <div class="stat-row">
+                                    <span>HP</span>
+                                    <div class="mini-hp-bar">
+                                        <div class="mini-hp-fill" style="width:@(actor.HpPercent * 100)%"></div>
+                                    </div>
+                                    <span class="stat-value">@((actor.HpPercent * 100).ToString("0"))%</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
     </div>
@@ -58,570 +120,365 @@
 
 @code {
     private SKCanvasView? _canvasView;
-
-    // Параметры камеры
-    private double _panX = 0; 
-    private double _panY = 0; 
-    private double _zoom = 0.8; 
-
-    private double _viewportWidth = 800;
-    private double _viewportHeight = 500;
-    private bool _cameraCentered = false;
-
-    // Троттлинг обновлений интерфейса
-    private long _lastUiUpdateTicks;
-    private int _lastLogCount = 0;
-
-    // Ссылка на компонент для передачи в JS
+    private ElementReference _logContainer;
     private DotNetObjectReference<GameViewport>? _selfReference;
 
-    // Флаг управления рендерингом Blazor DOM
-    private bool _allowRender = false;
+    private double _panX, _panY, _zoom = 0.9;
+    private double _viewportWidth = 800, _viewportHeight = 500;
+    private bool _cameraCentered;
 
-    // --- СЕТКА ТАЙЛОВ ДЛЯ КУЛЛИНГА ЧЕРЕЗ ПРЯМОУГОЛЬНЫЙ ИНДЕКС [col, row] ---
+    private long _lastUiUpdateTicks;
+    private int _lastLogCount;
+    private bool _allowRender;
+
     private readonly TileSnapshot?[,] _tileGrid = new TileSnapshot[100, 100];
     private readonly SKPicture?[] _chunksWithText = new SKPicture?[100];
     private readonly SKPicture?[] _chunksNoText = new SKPicture?[100];
-    private bool _chunksBaked = false;
+    private bool _chunksBaked;
 
-    // --- КЭШИРОВАННЫЕ ШРИФТЫ SKIASHARP 3.0 ---
     private readonly SKFont _fontCoords = new(SKTypeface.Default, 8f);
     private readonly SKFont _fontEmoji = new(SKTypeface.Default, 16f);
     private readonly SKFont _fontActorName = new(SKTypeface.Default, 9f);
     private readonly SKFont _fontParticle = new(SKTypeface.Default, 11f);
 
-    // --- КЭШИРОВАННЫЕ КИСТИ SKIASHARP 3.0 ---
-    private readonly SKPaint _paintGround = new() { Color = new SKColor(23, 45, 26), IsAntialias = true, Style = SKPaintStyle.Fill };
-    private readonly SKPaint _paintWall = new() { Color = new SKColor(43, 31, 26), IsAntialias = true, Style = SKPaintStyle.Fill };
-    private readonly SKPaint _paintGridStroke = new() { Color = new SKColor(31, 59, 35), IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 1f };
-    private readonly SKPaint _paintCoordsText = new() { Color = new SKColor(59, 78, 63), IsAntialias = true, Style = SKPaintStyle.Fill };
+    private readonly SKPaint _paintGround = new() { Color = new SKColor(28, 52, 38), IsAntialias = true, Style = SKPaintStyle.Fill };
+    private readonly SKPaint _paintWall = new() { Color = new SKColor(55, 40, 35), IsAntialias = true, Style = SKPaintStyle.Fill };
+    private readonly SKPaint _paintGridStroke = new() { Color = new SKColor(38, 68, 48), IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 1f };
+    private readonly SKPaint _paintCoordsText = new() { Color = new SKColor(70, 95, 78), IsAntialias = true, Style = SKPaintStyle.Fill };
     
-    private readonly SKPaint _paintHeroHalo = new() { Color = SKColors.Gold, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 2f };
-    private readonly SKPaint _paintOrcHalo = new() { Color = new SKColor(255, 69, 0), IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 2f };
-    private readonly SKPaint _paintActorBg = new() { Color = new SKColor(0, 0, 0, 180), IsAntialias = true, Style = SKPaintStyle.Fill };
+    private readonly SKPaint _paintHeroHalo = new() { Color = new SKColor(255, 215, 0), IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 2.5f };
+    private readonly SKPaint _paintOrcHalo = new() { Color = new SKColor(255, 80, 30), IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 2.5f };
+    private readonly SKPaint _paintActorBg = new() { Color = new SKColor(0, 0, 0, 200), IsAntialias = true, Style = SKPaintStyle.Fill };
     private readonly SKPaint _paintActorEmoji = new() { IsAntialias = true, Style = SKPaintStyle.Fill };
     private readonly SKPaint _paintActorName = new() { Color = SKColors.White, IsAntialias = true, Style = SKPaintStyle.Fill };
     
-    private readonly SKPaint _paintHpBg = new() { Color = new SKColor(255, 0, 0, 80), Style = SKPaintStyle.Fill };
-    private readonly SKPaint _paintHpBar = new() { Color = SKColors.Green, Style = SKPaintStyle.Fill };
+    private readonly SKPaint _paintHpBg = new() { Color = new SKColor(60, 20, 20), Style = SKPaintStyle.Fill };
+    private readonly SKPaint _paintHpBarHero = new() { Color = new SKColor(0, 200, 100), Style = SKPaintStyle.Fill };
+    private readonly SKPaint _paintHpBarOrc = new() { Color = new SKColor(200, 60, 30), Style = SKPaintStyle.Fill };
 
-    private readonly SKPaint _paintArrowHero = new() { Color = SKColors.Gold, IsAntialias = true, StrokeWidth = 2.5f, PathEffect = SKPathEffect.CreateDash([6f, 4f], 0) };
-    private readonly SKPaint _paintArrowOrc = new() { Color = new SKColor(255, 69, 0), IsAntialias = true, StrokeWidth = 2.5f, PathEffect = SKPathEffect.CreateDash([6f, 4f], 0) };
-    private readonly SKPaint _paintAttackLine = new() { Color = new SKColor(255, 51, 51), IsAntialias = true, StrokeWidth = 3.5f };
+    private readonly SKPaint _paintArrowHero = new() { Color = new SKColor(255, 215, 0, 180), IsAntialias = true, StrokeWidth = 2f, PathEffect = SKPathEffect.CreateDash([5f, 4f], 0) };
+    private readonly SKPaint _paintArrowOrc = new() { Color = new SKColor(255, 80, 30, 180), IsAntialias = true, StrokeWidth = 2f, PathEffect = SKPathEffect.CreateDash([5f, 4f], 0) };
+    private readonly SKPaint _paintAttackLine = new() { Color = new SKColor(255, 60, 60, 200), IsAntialias = true, StrokeWidth = 3f };
 
-    private readonly SKPaint _paintParticleDmg = new() { Color = new SKColor(255, 68, 68), IsAntialias = true, Style = SKPaintStyle.Fill };
-    private readonly SKPaint _paintParticleHeal = new() { Color = new SKColor(68, 255, 68), IsAntialias = true, Style = SKPaintStyle.Fill };
+    private readonly SKPaint _paintParticleDmg = new() { Color = new SKColor(255, 80, 80), IsAntialias = true, Style = SKPaintStyle.Fill };
+    private readonly SKPaint _paintParticleHeal = new() { Color = new SKColor(80, 255, 120), IsAntialias = true, Style = SKPaintStyle.Fill };
+    private readonly SKPaint _paintParticleCrit = new() { Color = new SKColor(255, 200, 50), IsAntialias = true, Style = SKPaintStyle.Fill };
 
     private SKPath? _hexPath;
-
-    // Кэш для измерения текста
-    private readonly Dictionary<string, float> _emojiWidthCache = new();
-    private readonly Dictionary<string, float> _nameWidthCache = new();
-    private readonly Dictionary<string, float> _particleWidthCache = new();
+    private readonly Dictionary<string, float> _textWidthCache = new();
 
     protected override void OnInitialized()
     {
         InitializeHexPath();
         UiAgent.OnRenderTick += HandleRenderTick;
+        UiAgent.OnLogChanged += HandleLogChanged;   // <-- добавить
+    }
+    
+    private void HandleLogChanged()
+    {
+        _allowRender = true;
+        InvokeAsync(StateHasChanged);
+        InvokeAsync(async () => {
+            await Task.Delay(50);
+            await ScrollLogsToBottom();
+        });
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-        {
-            _selfReference = DotNetObjectReference.Create(this);
-            
-            // Нативный JS-скрипт с обновленной плавной физикой зума в точку курсора
-            await JSRuntime.InvokeVoidAsync("eval", @"
-                window.initCanvasDrag = (canvasId, dotNetHelper, initialZoom) => {
+        if (!firstRender) return;
+        
+        _selfReference = DotNetObjectReference.Create(this);
+        
+        await JSRuntime.InvokeVoidAsync("eval", @"
+            window.gameViewport = {
+                panX: 0, panY: 0, zoom: 0.9,
+                
+                init: function(canvasId, dotNetHelper, initialZoom) {
+                    this.zoom = initialZoom;
                     const canvas = document.getElementById(canvasId);
                     if (!canvas) return;
                     
-                    window.canvasPanX = window.canvasPanX !== undefined ? window.canvasPanX : 0;
-                    window.canvasPanY = window.canvasPanY !== undefined ? window.canvasPanY : 0;
-                    window.canvasZoom = initialZoom;
-
-                    let isDragging = false;
-                    let startX = 0;
-                    let startY = 0;
-                    let lastInvalidate = 0;
-
-                    function triggerInvalidate() {
-                        const now = performance.now();
-                        if (now - lastInvalidate >= 16) { 
-                            lastInvalidate = now;
-                            dotNetHelper.invokeMethodAsync('RequestInvalidate');
-                        }
-                    }
-
-                    canvas.addEventListener('mousedown', (e) => {
+                    let isDragging = false, startX = 0, startY = 0;
+                    
+                    canvas.addEventListener('mousedown', e => {
                         isDragging = true;
-                        startX = e.clientX - window.canvasPanX;
-                        startY = e.clientY - window.canvasPanY;
+                        startX = e.clientX - this.panX;
+                        startY = e.clientY - this.panY;
+                        canvas.style.cursor = 'grabbing';
                     });
-
-                    canvas.addEventListener('mousemove', (e) => {
+                    
+                    canvas.addEventListener('mousemove', e => {
                         if (!isDragging) return;
-                        window.canvasPanX = e.clientX - startX;
-                        window.canvasPanY = e.clientY - startY;
-                        triggerInvalidate();
+                        this.panX = e.clientX - startX;
+                        this.panY = e.clientY - startY;
+                        dotNetHelper.invokeMethodAsync('RequestInvalidate');
                     });
-
+                    
                     window.addEventListener('mouseup', () => {
-                        if (isDragging) {
-                            isDragging = false;
-                            triggerInvalidate();
-                        }
+                        isDragging = false;
+                        canvas.style.cursor = 'grab';
                     });
-
-                    // Математика масштабирования с якорем на курсоре
-                    canvas.addEventListener('wheel', (e) => {
+                    
+                    canvas.addEventListener('wheel', e => {
                         e.preventDefault();
-                        
                         const rect = canvas.getBoundingClientRect();
-                        const mx = e.clientX - rect.left;
-                        const my = e.clientY - rect.top;
-
-                        const oldZoom = window.canvasZoom;
-
-                        // Вычисляем плавный коэффициент изменения масштаба в зависимости от deltaY
-                        const zoomIntensity = 0.12; 
-                        const scale = Math.exp(-e.deltaY * zoomIntensity / 100);
-                        
-                        let newZoom = oldZoom * scale;
-                        newZoom = Math.max(0.15, Math.min(4.0, newZoom));
-
-                        // Опережающая коррекция сдвига для удержания точки под курсором
-                        const actualScale = newZoom / oldZoom;
-                        window.canvasPanX = mx - (mx - window.canvasPanX) * actualScale;
-                        window.canvasPanY = my - (my - window.canvasPanY) * actualScale;
-                        window.canvasZoom = newZoom;
-
-                        triggerInvalidate();
+                        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+                        const oldZoom = this.zoom;
+                        const scale = Math.exp(-e.deltaY * 0.0012);
+                        this.zoom = Math.max(0.15, Math.min(4.0, oldZoom * scale));
+                        const s = this.zoom / oldZoom;
+                        this.panX = mx - (mx - this.panX) * s;
+                        this.panY = my - (my - this.panY) * s;
+                        dotNetHelper.invokeMethodAsync('RequestInvalidate');
                     }, { passive: false });
-                };
+                },
+                
+                getState: function() { return [this.panX, this.panY, this.zoom]; },
+                setState: function(x, y, z) { this.panX = x; this.panY = y; this.zoom = z; }
+            };
+        ");
 
-                window.getCanvasState = () => {
-                    return [window.canvasPanX || 0, window.canvasPanY || 0, window.canvasZoom || 0.8];
-                };
-
-                window.setCanvasState = (panX, panY, zoom) => {
-                    window.canvasPanX = panX;
-                    window.canvasPanY = panY;
-                    window.canvasZoom = zoom;
-                };
-            ");
-
-            await JSRuntime.InvokeVoidAsync("initCanvasDrag", "skia-canvas-container", _selfReference, _zoom);
-        }
+        await JSRuntime.InvokeVoidAsync("gameViewport.init", "skia-canvas-container", _selfReference, _zoom);
+        await JSRuntime.InvokeVoidAsync("initPanelResize");
     }
 
-    [JSInvokable]
-    public void RequestInvalidate()
-    {
-        _canvasView?.Invalidate();
-    }
-
-    protected override bool ShouldRender()
-    {
-        if (_allowRender)
-        {
-            _allowRender = false;
-            return true;
-        }
-        return false;
-    }
-
-    private void RequestUiRender()
-    {
-        _allowRender = true;
-        StateHasChanged();
-    }
-
-    private void StartGame()
-    {
-        Game.Start();
-        RequestUiRender();
-    }
-
-    private void StopGame()
-    {
-        Game.Stop();
-        RequestUiRender();
-    }
-
-    private void InitializeHexPath()
-    {
-        _hexPath = new SKPath();
-        const float r = 36f;
-        for (int i = 0; i < 6; i++)
-        {
-            double angleRad = Math.PI / 180 * (60 * i - 30);
-            float px = (float)(r * Math.Cos(angleRad));
-            float py = (float)(r * Math.Sin(angleRad));
-            
-            if (i == 0) _hexPath.MoveTo(px, py);
-            else _hexPath.LineTo(px, py);
-        }
-        _hexPath.Close();
-    }
-
-    private void BuildTileGrid()
-    {
-        var tiles = UiAgent.AllCachedTiles;
-        int tileCount = tiles.Count;
-        for (int i = 0; i < tileCount; i++)
-        {
-            var tile = tiles[i];
-            
-            int col = tile.Q + (tile.R / 2); 
-            int row = tile.R;                 
-            
-            if (col >= 0 && col < 100 && row >= 0 && row < 100)
-            {
-                _tileGrid[col, row] = tile;
-            }
-        }
-    }
-
-    private void BakeChunks()
-    {
-        BuildTileGrid();
-
-        for (int cy = 0; cy < 10; cy++)
-        {
-            for (int cx = 0; cx < 10; cx++)
-            {
-                int minCol = cx * 10;
-                int maxCol = (cx + 1) * 10 - 1;
-                int minRow = cy * 10;
-                int maxRow = (cy + 1) * 10 - 1;
-
-                using (var recorder = new SKPictureRecorder())
-                {
-                    using (var recordingCanvas = recorder.BeginRecording(new SKRect(0, 0, 10000, 10000)))
-                    {
-                        DrawChunkTiles(recordingCanvas, minCol, maxCol, minRow, maxRow, drawCoords: true);
-                    }
-                    _chunksWithText[cx + cy * 10] = recorder.EndRecording();
-                }
-
-                using (var recorder = new SKPictureRecorder())
-                {
-                    using (var recordingCanvas = recorder.BeginRecording(new SKRect(0, 0, 10000, 10000)))
-                    {
-                        DrawChunkTiles(recordingCanvas, minCol, maxCol, minRow, maxRow, drawCoords: false);
-                    }
-                    _chunksNoText[cx + cy * 10] = recorder.EndRecording();
-                }
-            }
-        }
-        _chunksBaked = true;
-    }
-
-    private void DrawChunkTiles(SKCanvas canvas, int minCol, int maxCol, int minRow, int maxRow, bool drawCoords)
-    {
-        for (int row = minRow; row <= maxRow; row++)
-        {
-            for (int col = minCol; col <= maxCol; col++)
-            {
-                var tile = _tileGrid[col, row];
-                if (tile == null) continue;
-
-                canvas.Save();
-                canvas.Translate((float)tile.CenterX, (float)tile.CenterY);
-
-                var paintFill = tile.TerrainClass == "ground" ? _paintGround : _paintWall;
-                canvas.DrawPath(_hexPath!, paintFill);
-                canvas.DrawPath(_hexPath!, _paintGridStroke);
-
-                if (drawCoords)
-                {
-                    string coordText = $"{tile.Q},{tile.R}";
-                    float drawX = 0f - (coordText.Length * 2.1f);
-                    canvas.DrawText(coordText, new SKPoint(drawX, 3), _fontCoords, _paintCoordsText);
-                }
-
-                canvas.Restore();
-            }
-        }
-    }
+    [JSInvokable] public void RequestInvalidate() => _canvasView?.Invalidate();
 
     private void HandleRenderTick()
     {
         if (!_cameraCentered && UiAgent.Actors.Count > 0)
         {
-            CenterOnHero();
+            CenterCamera();
             _cameraCentered = true;
         }
-
-        _canvasView?.Invalidate(); 
-
-        int currentLogCount = UiAgent.Logs.Count;
-        if (currentLogCount != _lastLogCount)
-        {
-            long now = System.Diagnostics.Stopwatch.GetTimestamp();
-            long elapsedTicks = now - _lastUiUpdateTicks;
-            long limitTicks = System.Diagnostics.Stopwatch.Frequency / 5; 
-
-            if (elapsedTicks >= limitTicks)
-            {
-                _lastUiUpdateTicks = now;
-                _lastLogCount = currentLogCount;
-                
-                _allowRender = true;
-                InvokeAsync(StateHasChanged);
-            }
-        }
+        _canvasView?.Invalidate();
     }
 
-    private void CenterOnHero()
+    private async Task ScrollLogsToBottom()
+    {
+        try {
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                (function() {
+                    var el = document.querySelector('.log-messages');
+                    if (el) el.scrollTop = el.scrollHeight;
+                })();
+            ");
+        } catch { }
+    }
+
+    private void CenterCamera()
     {
         var hero = UiAgent.Actors.FirstOrDefault(a => a.Class == "hero-actor");
-        if (hero != null)
-        {
-            _panX = (_viewportWidth / 2.0) - (hero.PixelX * _zoom);
-            _panY = (_viewportHeight / 2.0) - (hero.PixelY * _zoom);
-
-            if (JSRuntime is IJSInProcessRuntime jsInProcess)
-            {
-                jsInProcess.InvokeVoid("setCanvasState", _panX, _panY, _zoom);
-            }
-        }
+        if (hero == null) return;
+        
+        _panX = (_viewportWidth / 2) - hero.PixelX * _zoom;
+        _panY = (_viewportHeight / 2) - hero.PixelY * _zoom;
+        
+        JSRuntime.InvokeVoidAsync("gameViewport.setState", _panX, _panY, _zoom);
     }
+
+    private void StartGame() { Game.Start(); RequestUiRender(); }
+    private void StopGame() { Game.Stop(); RequestUiRender(); }
+    
+    private void RestartGame()
+    {
+        Game.Stop();
+        JSRuntime.InvokeVoidAsync("location.reload");
+    }
+    
+    private void ClearLogs() { RequestUiRender(); }
 
     private void OnSpeedInput(ChangeEventArgs e)
     {
-        if (double.TryParse(e.Value?.ToString(), out var val))
-        {
-            UiAgent.PendingSpeed = (float)(val / 10.0);
-            RequestUiRender();
-        }
+        if (double.TryParse(e.Value?.ToString(), out var v))
+            UiAgent.PendingSpeed = (float)(v / 10.0);
+        RequestUiRender();
     }
 
-    private void DrawTextCentered(SKCanvas canvas, string text, float centerX, float y, SKFont font, SKPaint paint, float textWidth)
+    private void RequestUiRender() { _allowRender = true; StateHasChanged(); }
+    protected override bool ShouldRender() { if (_allowRender) { _allowRender = false; return true; } return false; }
+
+    private string GetLogClass(string log)
     {
-        float drawX = centerX - (textWidth / 2f);
-        canvas.DrawText(text, new SKPoint(drawX, y), font, paint);
+        if (log.Contains("КРИТ")) return "log-entry log-crit";
+        if (log.Contains("урона") || log.Contains("УРОН")) return "log-entry log-damage";
+        if (log.Contains("Реген")) return "log-entry log-heal";
+        if (log.Contains("Импульс")) return "log-entry log-impulse";
+        if (log.Contains("движение") || log.Contains("путь")) return "log-entry log-move";
+        if (log.Contains("ДУЭЛЬ")) return "log-entry log-duel";
+        return "log-entry";
     }
 
-    private float GetEmojiWidth(string text)
+    private void InitializeHexPath()
     {
-        if (!_emojiWidthCache.TryGetValue(text, out float width))
+        const float r = 36f;
+        using var builder = new SKPathBuilder();
+        
+        for (int i = 0; i < 6; i++)
         {
-            width = _fontEmoji.MeasureText(text);
-            _emojiWidthCache[text] = width;
+            double a = Math.PI / 180 * (60 * i - 30);
+            float x = (float)(r * Math.Cos(a));
+            float y = (float)(r * Math.Sin(a));
+            
+            if (i == 0) builder.MoveTo(x, y);
+            else builder.LineTo(x, y);
         }
-        return width;
+        
+        builder.Close();
+        _hexPath = builder.Detach();
     }
-
-    private float GetNameWidth(string text)
-    {
-        if (!_nameWidthCache.TryGetValue(text, out float width))
-        {
-            width = _fontActorName.MeasureText(text);
-            _nameWidthCache[text] = width;
-        }
-        return width;
-    }
-
-    private float GetParticleWidth(string text)
-    {
-        if (!_particleWidthCache.TryGetValue(text, out float width))
-        {
-            width = _fontParticle.MeasureText(text);
-            _particleWidthCache[text] = width;
-        }
-        return width;
-    }
-
-    #region Главный цикл отрисовки SkiaSharp (Максимальное быстродействие)
 
     private void OnPaintSurface(SKPaintSurfaceEventArgs e)
     {
         var canvas = e.Surface.Canvas;
-        canvas.Clear(new SKColor(9, 9, 11)); 
+        canvas.Clear(new SKColor(12, 12, 15));
 
         _viewportWidth = e.Info.Width;
         _viewportHeight = e.Info.Height;
 
-        // Синхронизируем положение камеры из JS перед отрисовкой кадра через сверхбыстрый InProcess-вызов
-        if (JSRuntime is IJSInProcessRuntime jsInProcess)
+        if (JSRuntime is IJSInProcessRuntime js)
         {
-            var state = jsInProcess.Invoke<double[]>("getCanvasState");
-            if (state != null && state.Length == 3)
-            {
-                _panX = state[0];
-                _panY = state[1];
-                _zoom = state[2];
-            }
+            var s = js.Invoke<double[]>("gameViewport.getState");
+            if (s?.Length == 3) { _panX = s[0]; _panY = s[1]; _zoom = s[2]; }
         }
 
         canvas.Save();
         canvas.Translate((float)_panX, (float)_panY);
         canvas.Scale((float)_zoom);
 
-        // Инициализируем и запекаем чанки один раз при первом кадре
-        if (!_chunksBaked && UiAgent.AllCachedTiles.Count > 0)
-        {
-            BakeChunks();
-        }
+        if (!_chunksBaked && UiAgent.AllCachedTiles.Count > 0) BakeChunks();
 
-        // Вычисляем границы экрана в игровых координатах для куллинга (Viewport Culling)
-        float minWx = (float)(-_panX / _zoom);
-        float maxWx = (float)((_viewportWidth - _panX) / _zoom);
-        float minWy = (float)(-_panY / _zoom);
-        float maxWy = (float)((_viewportHeight - _panY) / _zoom);
-        
-        float margin = 64f; 
-        float leftBound = minWx - margin;
-        float rightBound = maxWx + margin;
-        float topBound = minWy - margin;
-        float bottomBound = maxWy + margin;
+        float minX = (float)(-_panX / _zoom), maxX = (float)((_viewportWidth - _panX) / _zoom);
+        float minY = (float)(-_panY / _zoom), maxY = (float)((_viewportHeight - _panY) / _zoom);
+        float margin = 80f;
 
-        // --- 1. ОТРИСОВКА КАРТЫ С ИСПОЛЬЗОВАНИЕМ ЧАНКОВОГО КУЛЛИНГА ---
+        // Chunks
         if (_chunksBaked)
         {
-            bool drawCoords = _zoom >= 0.45;
-            var activeChunks = drawCoords ? _chunksWithText : _chunksNoText;
-
+            bool showCoords = _zoom >= 0.5;
+            var chunks = showCoords ? _chunksWithText : _chunksNoText;
             for (int cy = 0; cy < 10; cy++)
             {
-                int minRow = cy * 10;
-                int maxRow = cy * 10 + 9;
-                float minY = 600f + 54f * minRow - 40f;
-                float maxY = 600f + 54f * maxRow + 40f;
-
-                if (maxY < topBound || minY > bottomBound) continue;
-
+                float y0 = 600f + 54f * (cy * 10) - margin, y1 = 600f + 54f * (cy * 10 + 9) + margin;
+                if (y1 < minY || y0 > maxY) continue;
                 for (int cx = 0; cx < 10; cx++)
                 {
-                    int minCol = cx * 10;
-                    int maxCol = cx * 10 + 9;
-                    
-                    float minX = 600f + 62.3538f * minCol - 40f;
-                    float maxX = 600f + 62.3538f * maxCol + 31.1769f + 40f;
-
-                    if (maxX < leftBound || minX > rightBound) continue;
-
-                    var chunk = activeChunks[cx + cy * 10];
-                    if (chunk != null)
-                    {
-                        canvas.DrawPicture(chunk);
-                    }
+                    float x0 = 600f + 62.35f * (cx * 10) - margin, x1 = 600f + 62.35f * (cx * 10 + 9) + margin;
+                    if (x1 < minX || x0 > maxX) continue;
+                    var chunk = chunks[cx + cy * 10];
+                    if (chunk != null) canvas.DrawPicture(chunk);
                 }
             }
         }
 
-        // 2. Отрисовка ВЕКТОРОВ
-        var arrows = UiAgent.ActiveArrows;
-        int arrowCount = arrows.Count;
-        for (int i = 0; i < arrowCount; i++)
+        // Arrows
+        foreach (var a in UiAgent.ActiveArrows)
         {
-            var arrow = arrows[i];
-            
-            bool startIn = arrow.StartX >= leftBound && arrow.StartX <= rightBound && arrow.StartY >= topBound && arrow.StartY <= bottomBound;
-            bool targetIn = arrow.TargetX >= leftBound && arrow.TargetX <= rightBound && arrow.TargetY >= topBound && arrow.TargetY <= bottomBound;
-            if (!startIn && !targetIn) continue;
-
-            var paint = arrow.ActorClass == "hero-actor" ? _paintArrowHero : _paintArrowOrc;
-            canvas.DrawLine((float)arrow.StartX, (float)arrow.StartY, (float)arrow.TargetX, (float)arrow.TargetY, paint);
+            var paint = a.ActorClass == "hero-actor" ? _paintArrowHero : _paintArrowOrc;
+            canvas.DrawLine((float)a.StartX, (float)a.StartY, (float)a.TargetX, (float)a.TargetY, paint);
         }
 
-        var attacks = UiAgent.ActiveAttacks;
-        int attackCount = attacks.Count;
-        for (int i = 0; i < attackCount; i++)
+        // Attacks
+        foreach (var a in UiAgent.ActiveAttacks)
+            canvas.DrawLine((float)a.StartX, (float)a.StartY, (float)a.TargetX, (float)a.TargetY, _paintAttackLine);
+
+        // Actors
+        foreach (var actor in UiAgent.Actors)
         {
-            var attack = attacks[i];
-
-            bool startIn = attack.StartX >= leftBound && attack.StartX <= rightBound && attack.StartY >= topBound && attack.StartY <= bottomBound;
-            bool targetIn = attack.TargetX >= leftBound && attack.TargetX <= rightBound && attack.TargetY >= topBound && attack.TargetY <= bottomBound;
-            if (!startIn && !targetIn) continue;
-
-            canvas.DrawLine((float)attack.StartX, (float)attack.StartY, (float)attack.TargetX, (float)attack.TargetY, _paintAttackLine);
-        }
-
-        // 3. Отрисовка АКТОРОВ
-        var actors = UiAgent.Actors;
-        int actorCount = actors.Count;
-        for (int i = 0; i < actorCount; i++)
-        {
-            var actor = actors[i];
-            float ax = (float)actor.PixelX;
-            float ay = (float)actor.PixelY;
-
-            if (ax < leftBound || ax > rightBound || ay < topBound || ay > bottomBound) continue;
+            float ax = (float)actor.PixelX, ay = (float)actor.PixelY;
+            if (ax < minX - margin || ax > maxX + margin || ay < minY - margin || ay > maxY + margin) continue;
 
             canvas.Save();
             canvas.Translate(ax, ay);
 
-            canvas.DrawCircle(0, -4, 14, _paintActorBg);
-            var paintHalo = actor.Class == "hero-actor" ? _paintHeroHalo : _paintOrcHalo;
-            canvas.DrawCircle(0, -4, 14, paintHalo);
+            bool isHero = actor.Class == "hero-actor";
+            var halo = isHero ? _paintHeroHalo : _paintOrcHalo;
+            var hpPaint = isHero ? _paintHpBarHero : _paintHpBarOrc;
 
-            DrawTextCentered(canvas, actor.Label, 0, 2, _fontEmoji, _paintActorEmoji, GetEmojiWidth(actor.Label));
-            DrawTextCentered(canvas, actor.Name, 0, 22, _fontActorName, _paintActorName, GetNameWidth(actor.Name));
+            canvas.DrawCircle(0, -4, 16, _paintActorBg);
+            canvas.DrawCircle(0, -4, 16, halo);
 
-            float hpY = -23f;
-            canvas.DrawRect(-14, hpY, 28, 3, _paintHpBg);
-            canvas.DrawRect(-14, hpY, 28 * actor.HpPercent, 3, _paintHpBar);
+            DrawCenteredText(canvas, actor.Label, 0, 2, _fontEmoji, _paintActorEmoji);
+            DrawCenteredText(canvas, actor.Name, 0, 22, _fontActorName, _paintActorName);
+
+            canvas.DrawRect(-16, -26, 32, 4, _paintHpBg);
+            canvas.DrawRect(-16, -26, 32 * actor.HpPercent, 4, hpPaint);
 
             canvas.Restore();
         }
 
-        // 4. Отрисовка ЧАСТИЦ
-        var particles = UiAgent.ActiveParticles;
-        int particleCount = particles.Count;
-        for (int i = 0; i < particleCount; i++)
+        // Particles
+        foreach (var p in UiAgent.ActiveParticles)
         {
-            var p = particles[i];
-
-            if (p.X < leftBound || p.X > rightBound || p.Y < topBound || p.Y > bottomBound) continue;
-
-            var paint = p.ColorClass == "particle-heal" ? _paintParticleHeal : _paintParticleDmg;
-            
+            if (p.X < minX - margin || p.X > maxX + margin || p.Y < minY - margin || p.Y > maxY + margin) continue;
+            var paint = p.ColorClass == "particle-heal" ? _paintParticleHeal : 
+                        p.Text.Contains("КРИТ") ? _paintParticleCrit : _paintParticleDmg;
             paint.Color = paint.Color.WithAlpha((byte)(p.Opacity * 255));
-            DrawTextCentered(canvas, p.Text, p.X, p.Y, _fontParticle, paint, GetParticleWidth(p.Text));
+            DrawCenteredText(canvas, p.Text, p.X, p.Y, _fontParticle, paint);
         }
 
-        canvas.Restore(); 
+        canvas.Restore();
     }
 
-    #endregion
+    private void BakeChunks()
+    {
+        var tiles = UiAgent.AllCachedTiles;
+        for (int i = 0; i < tiles.Count; i++)
+        {
+            var t = tiles[i];
+            int col = t.Q + (t.R / 2), row = t.R;
+            if (col is >= 0 and < 100 && row is >= 0 and < 100) _tileGrid[col, row] = t;
+        }
+
+        for (int cy = 0; cy < 10; cy++)
+            for (int cx = 0; cx < 10; cx++)
+            {
+                _chunksWithText[cx + cy * 10] = RecordChunk(cx * 10, cx * 10 + 9, cy * 10, cy * 10 + 9, true);
+                _chunksNoText[cx + cy * 10] = RecordChunk(cx * 10, cx * 10 + 9, cy * 10, cy * 10 + 9, false);
+            }
+        _chunksBaked = true;
+    }
+
+    private SKPicture? RecordChunk(int c0, int c1, int r0, int r1, bool coords)
+    {
+        using var rec = new SKPictureRecorder();
+        using var c = rec.BeginRecording(new SKRect(0, 0, 10000, 10000));
+        for (int r = r0; r <= r1; r++)
+            for (int col = c0; col <= c1; col++)
+            {
+                var t = _tileGrid[col, r];
+                if (t == null) continue;
+                c.Save();
+                c.Translate((float)t.CenterX, (float)t.CenterY);
+                c.DrawPath(_hexPath!, t.TerrainClass == "ground" ? _paintGround : _paintWall);
+                c.DrawPath(_hexPath!, _paintGridStroke);
+                if (coords)
+                {
+                    var txt = $"{t.Q},{t.R}";
+                    c.DrawText(txt, new SKPoint(-txt.Length * 2.1f, 3), _fontCoords, _paintCoordsText);
+                }
+                c.Restore();
+            }
+        return rec.EndRecording();
+    }
+
+    private void DrawCenteredText(SKCanvas c, string text, float cx, float y, SKFont font, SKPaint paint)
+    {
+        if (!_textWidthCache.TryGetValue(text, out var w)) { w = font.MeasureText(text); _textWidthCache[text] = w; }
+        c.DrawText(text, new SKPoint(cx, y), SKTextAlign.Center, font, paint);
+    }
 
     public void Dispose()
     {
         UiAgent.OnRenderTick -= HandleRenderTick;
+        UiAgent.OnLogChanged -= HandleLogChanged;
         _selfReference?.Dispose();
-        
-        _paintGround.Dispose();
-        _paintWall.Dispose();
-        _paintGridStroke.Dispose();
-        _paintCoordsText.Dispose();
-        _paintHeroHalo.Dispose();
-        _paintOrcHalo.Dispose();
-        _paintActorBg.Dispose();
-        _paintActorEmoji.Dispose();
-        _paintActorName.Dispose();
-        _paintHpBg.Dispose();
-        _paintHpBar.Dispose();
-        _paintArrowHero.Dispose();
-        _paintArrowOrc.Dispose();
-        _paintAttackLine.Dispose();
-        _paintParticleDmg.Dispose();
-        _paintParticleHeal.Dispose();
-        
-        _fontCoords.Dispose();
-        _fontEmoji.Dispose();
-        _fontActorName.Dispose();
-        _fontParticle.Dispose();
-        
         _hexPath?.Dispose();
-
-        for (int i = 0; i < 100; i++)
-        {
-            _chunksWithText[i]?.Dispose();
-            _chunksNoText[i]?.Dispose();
-        }
+        foreach (var p in new[] { _paintGround, _paintWall, _paintGridStroke, _paintCoordsText, _paintHeroHalo, _paintOrcHalo, _paintActorBg, _paintActorEmoji, _paintActorName, _paintHpBg, _paintHpBarHero, _paintHpBarOrc, _paintArrowHero, _paintArrowOrc, _paintAttackLine, _paintParticleDmg, _paintParticleHeal, _paintParticleCrit })
+            p.Dispose();
+        foreach (var f in new[] { _fontCoords, _fontEmoji, _fontActorName, _fontParticle })
+            f.Dispose();
+        for (int i = 0; i < 100; i++) { _chunksWithText[i]?.Dispose(); _chunksNoText[i]?.Dispose(); }
     }
 }

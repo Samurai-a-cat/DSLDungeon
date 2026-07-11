@@ -1,4 +1,4 @@
-﻿using DSLDungeon.Game.Core;
+using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Core.Actions;
 using DSLDungeon.Game.Core.Actions.Systems;
 
@@ -6,27 +6,34 @@ namespace DSLDungeon.Game.Entities.Items;
 
 public class Weapon : Item
 {
-    public int Damage { get; }
+    public int BaseDamage { get; }
     public int Range { get; }
-    public float AttackSpeed { get; } 
+    public float BaseAttackSpeed { get; } 
+    public string DamageType { get; }
     public bool IsRanged { get; }
 
-    public Weapon(string name, int damage, int range, float attackSpeed, bool isRanged) : base(name)
+    public float Quality { get; set; } = 1.0f;
+
+    public Weapon(string name, int baseDamage, int range, float attackSpeed, 
+        string damageType = "Physical", bool isRanged = false) : base(name)
     {
-        Damage = damage;
+        BaseDamage = baseDamage;
         Range = range;
-        AttackSpeed = attackSpeed;
+        BaseAttackSpeed = attackSpeed;
+        DamageType = damageType;
         IsRanged = isRanged;
     }
 
+    public float GetBaseDamage() => BaseDamage * Quality;
+
     public IQueueEvent CreateAttackEvent(EntityId attacker, EntityId target)
     {
-        // Извлекаем событие атаки напрямую из пула и инициализируем его поля
         var ev = EventPool.Get<MeleeAttackEvent>();
         ev.Owner = attacker;
         ev.TargetId = target;
-        ev.Damage = Damage;
-        ev.Duration = AttackSpeed;
+        ev.BaseDamage = BaseDamage;
+        ev.DamageType = DamageType;
+        ev.Duration = BaseAttackSpeed;
         
         return ev;
     }

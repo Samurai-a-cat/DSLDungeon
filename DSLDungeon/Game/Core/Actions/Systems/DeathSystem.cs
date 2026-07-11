@@ -1,4 +1,4 @@
-﻿using DSLDungeon.Game.Entities;
+using DSLDungeon.Game.Entities;
 
 namespace DSLDungeon.Game.Core.Actions.Systems;
 
@@ -15,10 +15,7 @@ public class DeathSystem : GameSystem<DieEvent>, IEntityTrackingSystem, IGameSys
 
     protected override void OnUpdate(float deltaTime, Actor actor, DieEvent ev, WorldState world)
     {
-        // Отменяем все задачи в очереди умирающего актора (события вернутся в пул)
         actor.Queue.ClearExcept(ev);
-
-        // Помечаем событие смерти завершенным
         ev.Status = EventStatus.Completed;
     }
 }

@@ -1,15 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
 using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Core.Actions.Systems;
 using DSLDungeon.Game.Entities;
+using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Services;
 
 public class GameUiAgent
 {
-    // --- ПУБЛИЧНЫЕ БУФЕРЫ ВЫВОДА (Ссылки стабильны, списки очищаются на каждом тике) ---
+    // --- ПУБЛИЧНЫЕ БУФЕРЫ ВЫВОДА ---
     public List<EntitySnapshot> Entities { get; } = new();
     public List<TileSnapshot> MapTiles { get; private set; } = new();
     public List<ActorSnapshot> Actors { get; } = new();
@@ -21,24 +20,21 @@ public class GameUiAgent
     // --- ПАРАМЕТРЫ ВВОДА ---
     public float PendingSpeed { get; set; } = 1.0f;
 
-    // --- ВНУТРЕННИЙ КЭШ ДЛЯ ИСКЛЮЧЕНИЯ АЛЛОКАЦИЙ ---
+    // --- ВНУТРЕННИЙ КЭШ ---
     private readonly Dictionary<EntityId, EntitySnapshot> _persistentInspector = new();
     private readonly Dictionary<EntityId, ActorSnapshot> _persistentActors = new();
     private readonly List<TileSnapshot> _cachedMapTiles = new();
     private readonly List<FloatingTextParticle> _particles = new();
 
-    // Кэшированные коллекции для исключения локальных аллокаций в циклах
     private readonly HashSet<EntityId> _activeIdsCache = new();
     private readonly List<EntityId> _idsToRemoveCache = new();
 
     private bool _mapInitialized;
 
     public event Action? OnRenderTick;
+    public event Action? OnLogChanged;
+    private int _lastLogHash; 
 
-    /// <summary>
-    /// Предоставляет внешний доступ ко всему кэшу сгенерированной карты.
-    /// Используется компонентом HexGrid.razor для высокопроизводительного куллинга на лету.
-    /// </summary>
     public IReadOnlyList<TileSnapshot> AllCachedTiles => _cachedMapTiles;
 
     public void SyncFromGame(WorldState world, float deltaTime)
@@ -56,12 +52,22 @@ public class GameUiAgent
 
     private void SyncLogs(WorldState world)
     {
+        // Проверяем, изменились ли логи
+        int currentHash = world.LogMessages.Count;
+        for (int i = 0; i < world.LogMessages.Count; i++)
+            currentHash = HashCode.Combine(currentHash, world.LogMessages[i].GetHashCode());
+    
+        if (currentHash == _lastLogHash) return;  // ничего не менялось
+        _lastLogHash = currentHash;
+
         Logs.Clear();
         int logCount = world.LogMessages.Count;
         for (int i = 0; i < logCount; i++)
         {
             Logs.Add(world.LogMessages[i]);
         }
+    
+        OnLogChanged?.Invoke();  // <-- пуш-уведомление в Blazor
     }
 
     private void SyncEntityInspector(WorldState world)
@@ -72,12 +78,14 @@ public class GameUiAgent
         {
             _activeIdsCache.Add(entity.Id);
             
+            var health = entity.GetComponent<HealthComponent>();
+            
             if (_persistentInspector.TryGetValue(entity.Id, out var snapshot))
             {
                 snapshot.Position = entity.Position.ToString();
-                snapshot.CurrentHp = entity.Health?.CurrentHp ?? 0;
-                snapshot.MaxHp = entity.Health?.MaxHp ?? 0;
-                snapshot.IsDead = entity.Health?.IsDead ?? false;
+                snapshot.CurrentHp = health?.CurrentHp ?? 0;
+                snapshot.MaxHp = health?.MaxHp ?? 0;
+                snapshot.IsDead = health?.IsDead ?? false;
             }
             else
             {
@@ -86,9 +94,9 @@ public class GameUiAgent
                     Id = entity.Id,
                     Name = entity.Name,
                     Position = entity.Position.ToString(),
-                    CurrentHp = entity.Health?.CurrentHp ?? 0,
-                    MaxHp = entity.Health?.MaxHp ?? 0,
-                    IsDead = entity.Health?.IsDead ?? false
+                    CurrentHp = health?.CurrentHp ?? 0,
+                    MaxHp = health?.MaxHp ?? 0,
+                    IsDead = health?.IsDead ?? false
                 };
             }
         }
@@ -166,8 +174,11 @@ public class GameUiAgent
         var entities = world.GetAllEntities();
         foreach (var entity in entities)
         {
-            if (entity is Actor actor && actor.Health?.IsDead != true)
+            if (entity is Actor actor)
             {
+                var health = actor.GetComponent<HealthComponent>();
+                if (health is { IsDead: true }) continue;
+
                 var (startX, startY) = GetTilePixelCenter(actor.Position);
                 float visualX = startX;
                 float visualY = startY;
@@ -207,8 +218,8 @@ public class GameUiAgent
                     }
                 }
 
-                int maxHp = actor.Health?.MaxHp ?? 100;
-                int currentHp = actor.Health?.CurrentHp ?? 100;
+                int maxHp = health?.MaxHp ?? 100;
+                int currentHp = health?.CurrentHp ?? 100;
                 float hpPercent = (float)currentHp / maxHp;
 
                 if (!_persistentActors.TryGetValue(actor.Id, out var actorSnap))
@@ -242,7 +253,7 @@ public class GameUiAgent
     private (float X, float Y) GetTilePixelCenter(HexCoords coords)
     {
         const float size = 36f; 
-        const float offsetX = 600f; // Сдвиг для безопасного укладывания координат в плюс
+        const float offsetX = 600f;
         const float offsetY = 600f; 
         const float sqrt3 = 1.73205f;
 
@@ -285,7 +296,7 @@ public class GameUiAgent
     #endregion
 }
 
-#region --- ТАКТИЧЕСКИЕ VIEW-MODELS ДЛЯ UI (Полностью изменяемые для Zero-Allocation) ---
+#region --- ТАКТИЧЕСКИЕ VIEW-MODELS ДЛЯ UI ---
 
 public class EntitySnapshot
 {
