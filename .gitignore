@@ -1,4 +1,8 @@
-﻿# Specific to the EFCore-Blazor sample app
+﻿[Bb]in/
+[Oo]bj/
+.vs/
+
+# Specific to the EFCore-Blazor sample app
 *.db
 *.db-shm
 *.db-wal
