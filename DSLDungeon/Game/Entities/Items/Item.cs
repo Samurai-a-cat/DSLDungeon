@@ -1,4 +1,5 @@
-﻿using DSLDungeon.Game.Entities.Stats;
+﻿using System.Collections.Generic;
+using DSLDungeon.Game.Entities.Stats;
 
 namespace DSLDungeon.Game.Entities.Items;
 

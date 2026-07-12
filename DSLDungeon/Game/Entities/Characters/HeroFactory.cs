@@ -1,4 +1,5 @@
 ﻿using DSLDungeon.Game.Core;
+using DSLDungeon.Game.Entities.Combat;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Stats;
 using DSLDungeon.Game.Grid;
@@ -22,6 +23,7 @@ public static class HeroFactory
         health.Initialize(120);
         
         hero.AddComponent(new EquipmentComponent());
+        hero.AddComponent(new CombatStateComponent());
         
         hero.AddComponent(new ImpulseComponent
         {

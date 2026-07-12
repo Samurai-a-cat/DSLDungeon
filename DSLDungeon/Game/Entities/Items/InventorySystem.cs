@@ -1,4 +1,6 @@
-﻿namespace DSLDungeon.Game.Entities.Items;
+﻿using System.Collections.Generic;
+
+namespace DSLDungeon.Game.Entities.Items;
 
 public class InventorySystem()
 {

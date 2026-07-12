@@ -1,4 +1,6 @@
-﻿namespace DSLDungeon.Game.Core.Actions;
+﻿using System;
+
+namespace DSLDungeon.Game.Core.Actions;
 
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 public class PoolConfigAttribute : Attribute

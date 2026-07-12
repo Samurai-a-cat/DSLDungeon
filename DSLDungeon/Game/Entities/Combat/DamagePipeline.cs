@@ -1,61 +1,9 @@
+using System;
 using DSLDungeon.Game.Core.Actions.Systems;
 using DSLDungeon.Game.Entities.Components;
-using DSLDungeon.Game.Entities.Items;
 using DSLDungeon.Game.Entities.Stats;
 
 namespace DSLDungeon.Game.Entities.Combat;
-
-public class DamageContext
-{
-    public Entity Attacker { get; set; } = null!;
-    public Entity Target { get; set; } = null!;
-    public Weapon? Weapon { get; set; }
-
-    public float BaseDamage { get; set; }
-    public string DamageType { get; set; } = "Physical";
-
-    public float Distance { get; set; }
-    public bool IsBackstab { get; set; }
-    public bool HasHeightAdvantage { get; set; }
-
-    public bool IsImpulseActive { get; set; }
-    public int ComboCount { get; set; }
-
-    public float FinalDamage { get; set; }
-    public bool IsCritical { get; set; }
-    public float LifeLeech { get; set; }
-
-    public static DamageContext CreateMelee(Entity attacker, Entity target, Weapon? weapon)
-    {
-        var ctx = new DamageContext
-        {
-            Attacker = attacker,
-            Target = target,
-            Weapon = weapon,
-            Distance = attacker.Position.DistanceTo(target.Position),
-        };
-
-        if (attacker.GetComponent<PositionTrackerComponent>() is { } tracker)
-        {
-            ctx.IsBackstab = tracker.IsBackstab(target, attacker);
-        }
-
-        if (attacker.GetComponent<PositionTrackerComponent>() is { } atkTracker &&
-            target.GetComponent<PositionTrackerComponent>() is { } tgtTracker)
-        {
-            ctx.HasHeightAdvantage = atkTracker.HasHeightAdvantageOver(target);
-        }
-
-        ctx.IsImpulseActive = attacker.GetComponent<ImpulseComponent>()?.IsActive ?? false;
-
-        if (attacker.GetComponent<ComboComponent>() is { } combo)
-        {
-            ctx.ComboCount = combo.Counter;
-        }
-
-        return ctx;
-    }
-}
 
 public static class DamagePipeline
 {
@@ -83,10 +31,10 @@ public static class DamagePipeline
         float moreMult = attackerStats.GetValue(StatKeys.DamageMore);
         if (moreMult <= 0) moreMult = 1f;
 
+        // === ВРЕМЕННЫЕ БОНУСЫ ИЗ CombatState (через DamageContext) ===
         if (ctx.IsImpulseActive)
         {
-            float impulseBonus = attackerStats.GetValue(StatKeys.ImpulseBonus);
-            moreMult *= (1 + impulseBonus);
+            moreMult *= (1 + ctx.ImpulseBonus);
         }
 
         if (ctx.ComboCount > 0)
@@ -140,6 +88,7 @@ public static class DamagePipeline
         ctx.FinalDamage = Math.Max(1, final);
         ctx.IsCritical = isCrit;
         
+        // Логирование (оставляем как есть)
         if (ctx.Attacker is Actor attackerActor && attackerActor.Queue.GetActiveEvent() is MeleeAttackEvent)
         {
             var world = ctx.Attacker.GetType().GetProperty("World")?.GetValue(ctx.Attacker) as WorldState;

@@ -76,13 +76,6 @@ public class GameLoop
             moveEvent.Duration = moveDuration;
 
             actor.Queue.Enqueue(moveEvent, _world);
-        
-            // Рефлекс — оставляем, это ИИ-решение
-            if (actor.GetComponent<ImpulseComponent>() is { } impulse)
-            {
-                impulse.Activate();
-                _world.AddLog($"[ИИ] {actor.Name} наращивает импульс (+25% к следующему удару)!");
-            }
         }
         else
         {

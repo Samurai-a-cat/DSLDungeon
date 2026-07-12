@@ -1,4 +1,5 @@
 ﻿using DSLDungeon.Game.Core;
+using DSLDungeon.Game.Entities.Combat;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Stats;
 using DSLDungeon.Game.Grid;
@@ -27,6 +28,7 @@ public static class OrcFactory
         
         orc.AddComponent(new EquipmentComponent());
         orc.AddComponent(new SimpleAIComponent());
+        orc.AddComponent(new CombatStateComponent());
         
         return orc;
     }
