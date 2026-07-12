@@ -45,6 +45,7 @@ public static class DamagePipeline
 
         float finalMult = 1f;
 
+        // Вариант Б: гибкость — флаг из CombatState, значение из StatSheet
         if (ctx.IsBackstab)
         {
             float backstabBonus = attackerStats.GetValue(StatKeys.BackstabBonus);

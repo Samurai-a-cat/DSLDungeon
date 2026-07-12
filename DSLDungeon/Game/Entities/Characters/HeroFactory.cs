@@ -27,7 +27,7 @@ public static class HeroFactory
         
         hero.AddComponent(new ImpulseComponent
         {
-            BonusDamagePercent = 10000f, //TODO дебаг, потом вернуть как было
+            BonusDamagePercent = 2f, //TODO дебаг, потом вернуть как было
             DurationSeconds = 2.0f
         });
         

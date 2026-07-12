@@ -30,4 +30,7 @@ public static class StatKeys
     public const string DamageFirePct = "dmg_fire_pct";
     public const string DamageColdPct = "dmg_cold_pct";
     public const string DamageLightningPct = "dmg_lightning_pct";
+    
+    public const string BackstabBonus = "backstab_bonus";
+    public const string HeightAdvantage = "height_advantage";
 }
