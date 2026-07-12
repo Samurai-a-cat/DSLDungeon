@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DSLDungeon")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0c17e6c3daa98b1b6d5bd43329a8f42fcf12078c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4bc2374c053084be5b8fb242b915b50803aa079b")]
 [assembly: System.Reflection.AssemblyProductAttribute("DSLDungeon")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DSLDungeon")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
