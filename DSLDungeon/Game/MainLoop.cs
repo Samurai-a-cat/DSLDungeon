@@ -33,7 +33,7 @@ public class GameLoop
 
         foreach (var actor in _world.GetAllActors()) 
         {
-            if (actor.GetComponent<HealthComponent>() is { IsDead: true }) continue;
+            if (actor.Health.IsDead) continue;
 
             if (actor.Queue.IsEmpty) 
             {
@@ -58,9 +58,8 @@ public class GameLoop
         if (target == null) return;
 
         int distance = actor.Position.DistanceTo(target.Position);
-        var health = actor.GetComponent<HealthComponent>();
 
-        _world.AddLog($"[ИИ] {actor.Name} думает... (HP: {health.CurrentHp}/{health.MaxHp})");
+        _world.AddLog($"[ИИ] {actor.Name} думает... (HP: {actor.Health.CurrentHp}/{actor.Health.MaxHp})");
 
         if (distance > 1)
         {
@@ -76,7 +75,7 @@ public class GameLoop
         }
         else
         {
-            var weapon = actor.GetComponent<EquipmentComponent>().Equipped
+            var weapon = actor.TryGetComponent<EquipmentComponent>()?.Equipped
                 .GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
 
             if (weapon != null)
@@ -95,7 +94,7 @@ public class GameLoop
         foreach (var other in _world.GetAllActors())
         {
             if (other.Id == actor.Id) continue;
-            if (other.GetComponent<HealthComponent>() is { IsDead: true }) continue;
+            if (other.Health.IsDead) continue;
 
             bool isEnemy = actor.Name.Contains("Рыцарь") ? other.Name.Contains("Орк") : other.Name.Contains("Рыцарь");
             if (!isEnemy) continue;

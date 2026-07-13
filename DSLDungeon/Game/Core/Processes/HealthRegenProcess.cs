@@ -1,13 +1,9 @@
 using DSLDungeon.Game.Core.Actions;
 using DSLDungeon.Game.Entities;
-using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Particles;
 
 namespace DSLDungeon.Game.Core.Processes;
 
-/// <summary>
-/// Фоновый процесс: восстанавливает HP живых акторов раз в секунду.
-/// </summary>
 [SystemOrder(60)]
 public class HealthRegenProcess : IGameSystem
 {
@@ -23,9 +19,9 @@ public class HealthRegenProcess : IGameSystem
 
             foreach (var actor in world.GetAllActors())
             {
-                var hp = actor.GetComponent<HealthComponent>();
+                var hp = actor.Health;
 
-                if (hp is { IsDead: false } && hp.CurrentHp < hp.MaxHp)
+                if (!hp.IsDead && hp.CurrentHp < hp.MaxHp)
                 {
                     int oldHp = hp.CurrentHp;
                     hp.ModifyHp(hp.RegenRate);
@@ -35,12 +31,11 @@ public class HealthRegenProcess : IGameSystem
                     {
                         world.AddLog($"[Регенерация] {actor.Name} восстановил {diff} HP.");
 
-                        world.PendingDamageTriggers.Add(new VisualDamageTrigger
-                        {
-                            Coords = actor.Position,
-                            Text = $"+{diff}",
-                            Type = "Heal"
-                        });
+                        world.PendingDamageTriggers.Add(new VisualDamageTrigger(
+                            actor.Position,
+                            $"+{diff}",
+                            "Heal"
+                        ));
                     }
                 }
             }

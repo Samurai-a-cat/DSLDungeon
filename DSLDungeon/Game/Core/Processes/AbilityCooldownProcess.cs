@@ -4,9 +4,6 @@ using DSLDungeon.Game.Entities.Components;
 
 namespace DSLDungeon.Game.Core.Processes;
 
-/// <summary>
-/// Фоновый процесс: уменьшает откаты способностей каждый кадр.
-/// </summary>
 [SystemOrder(10)]
 public class AbilityCooldownProcess : IGameSystem
 {
@@ -14,7 +11,7 @@ public class AbilityCooldownProcess : IGameSystem
     {
         foreach (var actor in world.GetAllActors())
         {
-            var cd = actor.GetComponent<AbilityCooldownComponent>();
+            var cd = actor.Cooldowns;
 
             var keys = new List<string>(cd.Cooldowns.Keys);
             foreach (var key in keys)

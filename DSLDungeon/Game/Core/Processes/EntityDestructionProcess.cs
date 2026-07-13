@@ -1,12 +1,8 @@
 using DSLDungeon.Game.Core.Actions;
 using DSLDungeon.Game.Entities;
-using DSLDungeon.Game.Entities.Components;
 
 namespace DSLDungeon.Game.Core.Processes;
 
-/// <summary>
-/// Фоновый процесс: удаляет мёртвые сущности из мира.
-/// </summary>
 [SystemOrder(95)]
 public class EntityDestructionProcess : IGameSystem
 {
@@ -14,7 +10,7 @@ public class EntityDestructionProcess : IGameSystem
     {
         foreach (var entity in world.GetAllEntities())
         {
-            if (entity.GetComponent<HealthComponent>() is { IsDead: true })
+            if (entity is Actor actor && actor.Health.IsDead)
             {
                 world.Despawn(entity.Id);
             }

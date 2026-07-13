@@ -5,9 +5,6 @@ using DSLDungeon.Game.Entities.Stats;
 
 namespace DSLDungeon.Game.Core.Processes;
 
-/// <summary>
-/// Фоновый процесс: проверяет HP акторов с BerserkRageData и применяет/снимает модификатор урона.
-/// </summary>
 [SystemOrder(20)]
 public class BerserkRageProcess : IGameSystem
 {
@@ -15,23 +12,22 @@ public class BerserkRageProcess : IGameSystem
     {
         foreach (var actor in world.GetAllActors())
         {
-            var data = actor.GetComponent<BerserkRageData>();
-            var health = actor.GetComponent<HealthComponent>();
-            var stats = actor.GetComponent<StatsComponent>();
+            var data = actor.TryGetComponent<BerserkRageData>();
+            if (data == null) continue;
 
-            float hpPercent = (float)health.CurrentHp / health.MaxHp;
+            float hpPercent = (float)actor.Health.CurrentHp / actor.Health.MaxHp;
 
             if (hpPercent < data.HpThresholdPercent)
             {
                 float missing = data.HpThresholdPercent - hpPercent;
                 float bonus = missing * data.DamageBonusPerMissingHp;
-                stats.Stats.RemoveModifiersFromSource(ModifierSource.PassiveSkill);
-                stats.Stats.AddModifier(StatKeys.DamageMore,
+                actor.Stats.RemoveModifiersFromSource(ModifierSource.PassiveSkill);
+                actor.Stats.AddModifier(StatKeys.DamageMore,
                     StatModifier.More(1.0f + bonus, ModifierSource.PassiveSkill));
             }
             else
             {
-                stats.Stats.RemoveModifiersFromSource(ModifierSource.PassiveSkill);
+                actor.Stats.RemoveModifiersFromSource(ModifierSource.PassiveSkill);
             }
         }
     }

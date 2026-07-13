@@ -19,16 +19,24 @@ public class Entity
         Position = position;
     }
 
-    public T? GetComponent<T>() where T : EntityComponent
+    public T GetComponent<T>() where T : EntityComponent
     {
         if (_components.TryGetValue(typeof(T), out var component))
-        {
             return (T)component;
-        }
-        return null;
+
+        throw new InvalidOperationException(
+            $"Entity {Name} ({Id}) не имеет компонента {typeof(T).Name}. " +
+            $"Базовые компоненты должны добавляться в конструкторе или фабрике.");
     }
 
-    public bool HasComponent<T>() where T : EntityComponent => _components.ContainsKey(typeof(T));
+    public T? TryGetComponent<T>() where T : EntityComponent
+    {
+        _components.TryGetValue(typeof(T), out var component);
+        return (T?)component;
+    }
+
+    public bool HasComponent<T>() where T : EntityComponent =>
+        _components.ContainsKey(typeof(T));
 
     public T AddComponent<T>(T component) where T : EntityComponent
     {

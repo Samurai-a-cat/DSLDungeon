@@ -1,4 +1,5 @@
 using DSLDungeon.Game.Core;
+using DSLDungeon.Game.Entities.Combat;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Stats;
 using DSLDungeon.Game.Grid;
@@ -11,25 +12,20 @@ public static class OrcFactory
     {
         var orc = new Actor(id, name, position);
 
-        var stats = orc.AddComponent(new StatsComponent());
         float waveMult = 1 + (waveLevel - 1) * 0.2f;
-        stats.SetupBaseStats(
+        orc.Stats.SetupBaseStats(
             str: 8 * waveMult,
             dex: 6 * waveMult,
             @int: 3 * waveMult,
             con: 7 * waveMult
         );
 
-        stats.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(3 * waveMult, "Physical"));
+        orc.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(3 * waveMult, "Physical"));
 
-        var health = orc.AddComponent(new HealthComponent());
-        health.Initialize((int)(70 * waveMult));
+        orc.Health.Initialize((int)(70 * waveMult));
 
         orc.AddComponent(new EquipmentComponent());
         orc.AddComponent(new SimpleAIComponent());
-        orc.AddComponent(new CombatStateComponent());
-        orc.AddComponent(new AbilityCooldownComponent());
-        orc.AddComponent(new PositionTrackerComponent());
 
         return orc;
     }
@@ -38,22 +34,17 @@ public static class OrcFactory
     {
         var orc = new Actor(id, name, position);
 
-        var stats = orc.AddComponent(new StatsComponent());
-        stats.SetupBaseStats(str: 20, dex: 8, @int: 4, con: 18);
+        orc.Stats.SetupBaseStats(str: 20, dex: 8, @int: 4, con: 18);
 
-        stats.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(15, "Physical"));
-        stats.Stats.AddModifier(StatKeys.Armor, StatModifier.Base(12));
-        stats.Stats.AddModifier(StatKeys.CritChance, StatModifier.Added(0.08f, ModifierSource.BaseStats));
-        stats.Stats.AddModifier(StatKeys.ResistancePhysical, StatModifier.Base(0.15f));
+        orc.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(15, "Physical"));
+        orc.Stats.AddModifier(StatKeys.Armor, StatModifier.Base(12));
+        orc.Stats.AddModifier(StatKeys.CritChance, StatModifier.Added(0.08f, ModifierSource.BaseStats));
+        orc.Stats.AddModifier(StatKeys.ResistancePhysical, StatModifier.Base(0.15f));
 
-        var health = orc.AddComponent(new HealthComponent());
-        health.Initialize(180);
+        orc.Health.Initialize(180);
 
         orc.AddComponent(new EquipmentComponent());
         orc.AddComponent(new SimpleAIComponent());
-        orc.AddComponent(new CombatStateComponent());
-        orc.AddComponent(new AbilityCooldownComponent());
-        orc.AddComponent(new PositionTrackerComponent());
 
         orc.AddComponent(new BerserkRageData
         {

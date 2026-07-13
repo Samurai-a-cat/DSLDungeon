@@ -4,9 +4,6 @@ using DSLDungeon.Game.Entities.Components;
 
 namespace DSLDungeon.Game.Core.Processes;
 
-/// <summary>
-/// Фоновый процесс: периодически проверяет условия фоновых потоков (магический интеллект).
-/// </summary>
 [SystemOrder(15)]
 public class BackgroundThreadProcess : IGameSystem
 {
@@ -14,8 +11,9 @@ public class BackgroundThreadProcess : IGameSystem
     {
         foreach (var actor in world.GetAllActors())
         {
-            var thread = actor.GetComponent<BackgroundThreadData>();
-            if (actor.GetComponent<HealthComponent>() is { IsDead: true }) continue;
+            var thread = actor.TryGetComponent<BackgroundThreadData>();
+            if (thread == null) continue;
+            if (actor.Health.IsDead) continue;
 
             thread.AccumulatedTime += deltaTime;
             if (thread.AccumulatedTime >= thread.CheckInterval)

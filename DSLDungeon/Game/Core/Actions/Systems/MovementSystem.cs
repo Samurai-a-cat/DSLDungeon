@@ -1,5 +1,6 @@
+using System;
+using System.Collections.Generic;
 using DSLDungeon.Game.Entities;
-using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game.Core.Actions.Systems;
@@ -110,6 +111,7 @@ public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem
             {
                 world.AddLog($"[Скорость] {actor.Name} (ETA: {ev.Duration:0.0}s) отменил движение на {ev.TargetCoords.ToString()}: соперник прибудет туда раньше (осталось ETA: {reservation.Eta:0.0}s).");
                 ev.Status = EventStatus.Cancelled;
+                return;
             }
         }
         else
@@ -131,8 +133,8 @@ public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem
         {
             actor.Position = ev.TargetCoords;
 
-            actor.GetComponent<CombatStateComponent>().ActivateImpulse(0.25f, 2.0f);
-            actor.GetComponent<PositionTrackerComponent>().OnMoved(ev.TargetCoords);
+            actor.Combat.ActivateImpulse(0.25f, 2.0f);
+            actor.PositionTracker.OnMoved(ev.TargetCoords);
 
             ev.Status = EventStatus.Completed;
         }

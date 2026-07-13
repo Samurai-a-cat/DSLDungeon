@@ -34,18 +34,12 @@ public class DamageContext
             Distance = attacker.Position.DistanceTo(target.Position),
         };
 
-        if (attacker.GetComponent<PositionTrackerComponent>() is { } tracker)
+        if (attacker is Actor attackerActor)
         {
-            ctx.IsBackstab = tracker.IsBackstab(target, attacker);
-        }
+            ctx.IsBackstab = attackerActor.PositionTracker.IsBackstab(target, attacker);
+            ctx.HasHeightAdvantage = attackerActor.PositionTracker.HasHeightAdvantageOver(target);
 
-        if (attacker.GetComponent<PositionTrackerComponent>() is { } atkTracker)
-        {
-            ctx.HasHeightAdvantage = atkTracker.HasHeightAdvantageOver(target);
-        }
-
-        if (attacker.GetComponent<CombatStateComponent>() is { } combat)
-        {
+            var combat = attackerActor.Combat;
             ctx.IsImpulseActive = combat.IsImpulseActive;
             ctx.ImpulseBonus = combat.ImpulseBonus;
             ctx.ComboCount = combat.ComboCount;

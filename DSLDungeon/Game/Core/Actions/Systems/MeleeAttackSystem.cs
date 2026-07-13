@@ -53,9 +53,9 @@ public class MeleeAttackSystem : AbilitySystem<MeleeAttackEvent>
 {
     protected override void OnAbilityStart(Actor actor, MeleeAttackEvent ev, WorldState world)
     {
-        var weapon = actor.GetComponent<EquipmentComponent>().Equipped
+        var weapon = actor.TryGetComponent<EquipmentComponent>()?.Equipped
             .GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
-        var stats = actor.GetComponent<StatsComponent>().Stats;
+        var stats = actor.Stats;
 
         if (weapon != null)
         {
@@ -77,12 +77,12 @@ public class MeleeAttackSystem : AbilitySystem<MeleeAttackEvent>
         {
             if (world.TryGetEntity(ev.TargetId, out var target))
             {
-                var attackerHealth = actor.GetComponent<HealthComponent>();
+                var attackerHealth = actor.Health;
                 var targetHealth = target.GetComponent<HealthComponent>();
 
-                if (attackerHealth is { IsDead: false } && targetHealth is { IsDead: false })
+                if (!attackerHealth.IsDead && targetHealth is { IsDead: false })
                 {
-                    var weapon = actor.GetComponent<EquipmentComponent>().Equipped
+                    var weapon = actor.TryGetComponent<EquipmentComponent>()?.Equipped
                         .GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
 
                     var ctx = DamageContext.CreateMelee(actor, target, weapon);
@@ -91,8 +91,8 @@ public class MeleeAttackSystem : AbilitySystem<MeleeAttackEvent>
 
                     float damage = DamagePipeline.Calculate(ctx);
 
-                    var combat = actor.GetComponent<CombatStateComponent>();
-                    if (combat is { IsImpulseActive: true })
+                    var combat = actor.Combat;
+                    if (combat.IsImpulseActive)
                     {
                         world.AddLog($"{actor.Name} использовал импульс)");
                         combat.ConsumeImpulse();
@@ -112,7 +112,7 @@ public class MeleeAttackSystem : AbilitySystem<MeleeAttackEvent>
                         ctx.IsCritical ? "CritDamage" : "Damage"
                     ));
 
-                    combat?.OnHit(target);
+                    combat.OnHit(target);
 
                     if (targetHealth.IsDead && target is Actor targetActor)
                     {

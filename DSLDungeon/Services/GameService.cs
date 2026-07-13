@@ -31,7 +31,7 @@ public class GameService : IDisposable
         var sword = WeaponPresets.CreateSwordOfJustice();
         hero.GetComponent<EquipmentComponent>().Equip(EquipmentSlot.MainHand, sword);
 
-        hero.GetComponent<HealthComponent>().RegenRate = 5;
+        hero.Health.RegenRate = 5;
 
         World.SpawnEntity(hero);
 

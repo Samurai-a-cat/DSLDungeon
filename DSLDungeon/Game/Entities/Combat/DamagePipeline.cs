@@ -1,4 +1,4 @@
-
+using System;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Stats;
 
@@ -8,8 +8,8 @@ public static class DamagePipeline
 {
     public static float Calculate(DamageContext ctx)
     {
-        var attackerStats = ctx.Attacker.GetComponent<StatsComponent>().Stats;
-        var targetStats = ctx.Target.GetComponent<StatsComponent>()?.Stats;
+        var attackerStats = ctx.Attacker.GetComponent<StatsComponent>();
+        var targetStats = ctx.Target.TryGetComponent<StatsComponent>()?.Stats;
 
         float baseDamage = ctx.BaseDamage;
         if (ctx.Weapon != null)

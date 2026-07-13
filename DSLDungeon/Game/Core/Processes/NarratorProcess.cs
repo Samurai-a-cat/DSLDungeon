@@ -1,14 +1,10 @@
 using DSLDungeon.Game.Core.Actions;
 using DSLDungeon.Game.Core.Actions.Systems;
 using DSLDungeon.Game.Entities;
-using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game.Core.Processes;
 
-/// <summary>
-/// Фоновый процесс: глобальный режиссёр, управляет волнами врагов.
-/// </summary>
 [SystemOrder(90)]
 public class NarratorProcess : IGameSystem
 {
@@ -23,7 +19,7 @@ public class NarratorProcess : IGameSystem
             bool anyOrcAlive = false;
             foreach (var actor in world.GetAllActors())
             {
-                if (actor.Name.Contains("Орк") && actor.GetComponent<HealthComponent>() is { IsDead: false })
+                if (actor.Name.Contains("Орк") && !actor.Health.IsDead)
                 {
                     anyOrcAlive = true;
                     break;

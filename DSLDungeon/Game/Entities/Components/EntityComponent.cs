@@ -16,6 +16,12 @@ public class StatsComponent : EntityComponent
 {
     public StatSheet Stats { get; } = new();
 
+    // Прокси-методы
+    public void AddModifier(string key, StatModifier mod) => Stats.AddModifier(key, mod);
+    public void RemoveModifiersFromSource(ModifierSource source) => Stats.RemoveModifiersFromSource(source);
+    public void RemoveModifiersByTag(string tag) => Stats.RemoveModifiersByTag(tag);
+    public float GetValue(string key) => Stats.GetValue(key);
+
     public override void OnAttached(Entity owner)
     {
         base.OnAttached(owner);
@@ -48,12 +54,12 @@ public class StatsComponent : EntityComponent
 
 public class HealthComponent : EntityComponent
 {
-    public int MaxHp 
-    { 
+    public int MaxHp
+    {
         get
         {
             var stats = Owner.GetComponent<StatsComponent>();
-            return (int)(stats.Stats.GetValue(StatKeys.Constitution) * 10);
+            return (int)(stats.GetValue(StatKeys.Constitution) * 10);
         }
     }
 
@@ -120,7 +126,7 @@ public class EquipmentComponent : EntityComponent
         var stats = Owner.GetComponent<StatsComponent>();
         foreach (var mod in item.GetModifiers())
         {
-            stats.Stats.AddModifier(mod.Key, mod.Value);
+            stats.AddModifier(mod.Key, mod.Value);
         }
 
         return true;
@@ -131,7 +137,7 @@ public class EquipmentComponent : EntityComponent
         if (!_equipped.TryGetValue(slot, out var item)) return;
 
         var stats = Owner.GetComponent<StatsComponent>();
-        stats.Stats.RemoveModifiersByTag(item.Name);
+        stats.RemoveModifiersByTag(item.Name);
 
         _equipped.Remove(slot);
     }
