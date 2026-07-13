@@ -7,7 +7,7 @@ using DSLDungeon.Game.Grid;
 namespace DSLDungeon.Game.Core.Actions.Systems;
 
 [PoolConfig(10)]
-public class SpawnUnitEvent : QueueEvent<UnitSpawnerSystem>
+public class SpawnUnitEvent : SystemEvent<UnitSpawnerSystem>
 {
     public override int Priority => 4;
 
@@ -24,6 +24,9 @@ public class SpawnUnitEvent : QueueEvent<UnitSpawnerSystem>
     }
 }
 
+/// <summary>
+/// Системная обработка спавна: не абилка персонажа.
+/// </summary>
 [SystemOrder(40)]
 public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
 {
@@ -68,7 +71,7 @@ public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
         }
         else
         {
-            Console.WriteLine($"[Спавнер] Ошибка: Неизвестный тип юнита {ev.UnitType}");
+            System.Console.WriteLine($"[Спавнер] Ошибка: Неизвестный тип юнита {ev.UnitType}");
             return;
         }
 

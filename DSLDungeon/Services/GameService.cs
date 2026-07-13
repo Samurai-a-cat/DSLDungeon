@@ -21,20 +21,17 @@ public class GameService : IDisposable
 
     public GameService()
     {
-        var map = new HexMap(7, 7); // Маленькая арена
+        var map = new HexMap(7, 7);
         World = new WorldState(map);
         Loop = new GameLoop(World);
 
         // === РЫЦАРЬ ===
         var heroId = EntityIdGenerator.Next();
         var hero = HeroFactory.CreateKnight(heroId, new HexCoords(1, 1), World);
-        
+
         var sword = WeaponPresets.CreateSwordOfJustice();
         hero.GetComponent<EquipmentComponent>()?.Equip(EquipmentSlot.MainHand, sword);
-        
-        hero.AddComponent(new ComboComponent());
-        hero.AddComponent(new PositionTrackerComponent());
-        
+
         // Для демонстрации: высокая регенерация чтобы дуэль длилась
         if (hero.GetComponent<HealthComponent>() is { } hp)
             hp.RegenRate = 5;
@@ -44,12 +41,9 @@ public class GameService : IDisposable
         // === ОРК-ЧЕМПИОН ===
         var orcId = EntityIdGenerator.Next();
         var orc = OrcFactory.CreateChampion(orcId, "Орк-Чемпион Грумш", new HexCoords(4, 3), World);
-        
+
         var axe = WeaponPresets.CreateOrcChampionAxe();
         orc.GetComponent<EquipmentComponent>()?.Equip(EquipmentSlot.MainHand, axe);
-        
-        orc.AddComponent(new ComboComponent());
-        orc.AddComponent(new PositionTrackerComponent());
 
         World.SpawnEntity(orc);
 

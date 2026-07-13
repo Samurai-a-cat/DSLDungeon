@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using DSLDungeon.Game.Entities;
 using DSLDungeon.Game.Entities.Components;
@@ -6,7 +6,6 @@ using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game.Core.Actions.Systems;
 
-// --- СОБЫТИЕ ПЕРЕМЕЩЕНИЯ (Без изменений) ---
 [PoolConfig(10)]
 public class MoveEvent : QueueEvent<MovementSystem>
 {
@@ -47,17 +46,14 @@ public class MoveEvent : QueueEvent<MovementSystem>
     }
 }
 
-// --- СИСТЕМА ДВИЖЕНИЯ (Оптимизированная) ---
 public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem, IGameSystem
 {
-    // 1. Делаем MoveReservation структурой. Занимает всего 12 байт!
     private struct MoveReservation
     {
         public EntityId ActiveActor { get; set; }
         public float Eta { get; set; }
     }
 
-    // Реестр броней хранит структуры напрямую в бакетах словаря (zero-allocation)
     private readonly Dictionary<HexCoords, MoveReservation> _tileReservations = new();
 
     public new void Register(EntityId id) => base.Register(id);
@@ -106,7 +102,6 @@ public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem, IGam
                     }
                 }
 
-                // Обновляем структуру в словаре (поскольку это структура, перезаписываем её целиком)
                 _tileReservations[ev.TargetCoords] = new MoveReservation
                 {
                     ActiveActor = actor.Id,
@@ -122,7 +117,6 @@ public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem, IGam
         }
         else
         {
-            // Создаем новую структуру-бронь на стеке и кладем в словарь
             _tileReservations[ev.TargetCoords] = new MoveReservation
             {
                 ActiveActor = actor.Id,
@@ -139,17 +133,17 @@ public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem, IGam
         if (ev.ElapsedTime >= ev.Duration)
         {
             actor.Position = ev.TargetCoords;
-        
-            // ← сюда
+
+            // Активируем импульс через CombatStateComponent (единая точка правды)
+            actor.GetComponent<CombatStateComponent>()?.ActivateImpulse(0.25f, 2.0f);
             actor.GetComponent<PositionTrackerComponent>()?.OnMoved(ev.TargetCoords);
-        
+
             ev.Status = EventStatus.Completed;
         }
     }
 
     public override void Update(float deltaTime, WorldState world)
     {
-        // Поиск по ключам и обновление структур
         foreach (var (coords, reservation) in _tileReservations)
         {
             var updated = reservation;

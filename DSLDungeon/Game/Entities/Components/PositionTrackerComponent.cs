@@ -1,7 +1,11 @@
-﻿using DSLDungeon.Game.Grid;
+using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game.Entities.Components;
 
+/// <summary>
+/// Компонент геометрии: трекает позицию, определяет бэкстаб и преимущество высоты.
+/// Только данные/заглушки, логика импульса вынесена в MovementSystem -> CombatStateComponent.
+/// </summary>
 public class PositionTrackerComponent : EntityComponent
 {
     private HexCoords _lastPosition;
@@ -19,10 +23,5 @@ public class PositionTrackerComponent : EntityComponent
     public void OnMoved(HexCoords newPosition)
     {
         _lastPosition = newPosition;
-
-        if (Owner.GetComponent<ImpulseComponent>() is { } impulse)
-        {
-            impulse.Activate();
-        }
     }
 }

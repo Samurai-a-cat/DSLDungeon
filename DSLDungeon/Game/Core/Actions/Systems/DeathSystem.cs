@@ -3,11 +3,14 @@ using DSLDungeon.Game.Entities;
 namespace DSLDungeon.Game.Core.Actions.Systems;
 
 [PoolConfig(5)]
-public class DieEvent : QueueEvent<DeathSystem>
+public class DieEvent : SystemEvent<DeathSystem>
 {
     public override int Priority => 1;
 }
 
+/// <summary>
+/// Системная обработка смерти: не абилка, движок управляет.
+/// </summary>
 public class DeathSystem : GameSystem<DieEvent>, IEntityTrackingSystem, IGameSystem
 {
     public new void Register(EntityId id) => base.Register(id);
