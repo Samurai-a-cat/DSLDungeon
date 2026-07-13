@@ -1,10 +1,7 @@
-﻿using DSLDungeon.Game.Entities.Stats;
+using DSLDungeon.Game.Entities.Stats;
 
 namespace DSLDungeon.Game.Entities.Items;
 
-/// <summary>
-/// Пример редкого оружия с кастомными модификаторами
-/// </summary>
 public static class WeaponPresets
 {
     public static Weapon CreateRustyDagger()
@@ -34,14 +31,14 @@ public static class WeaponPresets
         w.AddModifier(StatKeys.CastSpeed, StatModifier.More(1.15f, ModifierSource.Equipment));
         return w;
     }
-    
+
     public static Weapon CreateOrcChampionAxe()
     {
         var w = new Weapon("Топор чемпиона", 20, 1, 1.1f, "Physical");
         w.Quality = 1.4f;
         w.AddModifier(StatKeys.Strength, StatModifier.Added(8, ModifierSource.Equipment));
         w.AddModifier(StatKeys.DamageBase, StatModifier.More(1.3f, ModifierSource.Equipment, "Physical"));
-        w.AddModifier(StatKeys.AttackSpeed, StatModifier.Less(0.9f, ModifierSource.Equipment)); // Медленнее
+        w.AddModifier(StatKeys.AttackSpeed, StatModifier.Less(0.9f, ModifierSource.Equipment));
         return w;
     }
 }

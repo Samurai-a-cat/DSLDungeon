@@ -1,4 +1,4 @@
-﻿namespace DSLDungeon.Game.Entities.Systems;
+namespace DSLDungeon.Game.Entities.Systems;
 
 public class HealthSystem
 {
@@ -6,7 +6,6 @@ public class HealthSystem
     public int CurrentHp { get; private set; }
     public bool IsDead => CurrentHp <= 0;
 
-    // Скорость регенерации (HP в секунду)
     public int RegenRate { get; set; } = 1; 
 
     public event Action? OnDeath;
@@ -21,8 +20,8 @@ public class HealthSystem
     public void ModifyHp(int amount)
     {
         if (IsDead) return; 
-        CurrentHp = System.Math.Clamp(CurrentHp + amount, 0, MaxHp);
-        
+        CurrentHp = Math.Clamp(CurrentHp + amount, 0, MaxHp);
+
         if (IsDead)
         {
             OnDeath?.Invoke();

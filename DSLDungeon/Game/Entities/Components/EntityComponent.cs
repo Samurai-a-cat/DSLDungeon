@@ -24,10 +24,7 @@ public class StatsComponent : EntityComponent
         {
             if (key == StatKeys.Constitution)
             {
-                if (owner.GetComponent<HealthComponent>() is { } health)
-                {
-                    health.RecalculateMaxHpFromConstitution(value);
-                }
+                owner.GetComponent<HealthComponent>().RecalculateMaxHpFromConstitution(value);
             }
         };
     }
@@ -56,7 +53,6 @@ public class HealthComponent : EntityComponent
         get
         {
             var stats = Owner.GetComponent<StatsComponent>();
-            if (stats == null) return 100;
             return (int)(stats.Stats.GetValue(StatKeys.Constitution) * 10);
         }
     }
@@ -114,19 +110,17 @@ public class EquipmentComponent : EntityComponent
 
     public bool Equip(EquipmentSlot slot, Item item)
     {
-        if (_equipped.TryGetValue(slot, out var oldItem))
+        if (_equipped.TryGetValue(slot, out _))
         {
             Unequip(slot);
         }
 
         _equipped[slot] = item;
 
-        if (Owner.GetComponent<StatsComponent>() is { } stats)
+        var stats = Owner.GetComponent<StatsComponent>();
+        foreach (var mod in item.GetModifiers())
         {
-            foreach (var mod in item.GetModifiers())
-            {
-                stats.Stats.AddModifier(mod.Key, mod.Value);
-            }
+            stats.Stats.AddModifier(mod.Key, mod.Value);
         }
 
         return true;
@@ -136,10 +130,8 @@ public class EquipmentComponent : EntityComponent
     {
         if (!_equipped.TryGetValue(slot, out var item)) return;
 
-        if (Owner.GetComponent<StatsComponent>() is { } stats)
-        {
-            stats.Stats.RemoveModifiersByTag(item.Name);
-        }
+        var stats = Owner.GetComponent<StatsComponent>();
+        stats.Stats.RemoveModifiersByTag(item.Name);
 
         _equipped.Remove(slot);
     }

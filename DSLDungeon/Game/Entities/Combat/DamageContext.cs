@@ -1,4 +1,3 @@
-﻿using DSLDungeon.Game.Core.Actions.Systems;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Items;
 
@@ -17,7 +16,6 @@ public class DamageContext
     public bool IsBackstab { get; set; }
     public bool HasHeightAdvantage { get; set; }
 
-    // Временные бонусы из CombatState
     public bool IsImpulseActive { get; set; }
     public float ImpulseBonus { get; set; }
     public int ComboCount { get; set; }
@@ -36,19 +34,16 @@ public class DamageContext
             Distance = attacker.Position.DistanceTo(target.Position),
         };
 
-        // Геометрия (через PositionTracker, пока заглушки)
         if (attacker.GetComponent<PositionTrackerComponent>() is { } tracker)
         {
             ctx.IsBackstab = tracker.IsBackstab(target, attacker);
         }
 
-        if (attacker.GetComponent<PositionTrackerComponent>() is { } atkTracker &&
-            target.GetComponent<PositionTrackerComponent>() is { } tgtTracker)
+        if (attacker.GetComponent<PositionTrackerComponent>() is { } atkTracker)
         {
             ctx.HasHeightAdvantage = atkTracker.HasHeightAdvantageOver(target);
         }
 
-        // Временные бонусы из CombatState (единая точка правды)
         if (attacker.GetComponent<CombatStateComponent>() is { } combat)
         {
             ctx.IsImpulseActive = combat.IsImpulseActive;

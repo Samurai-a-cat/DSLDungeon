@@ -2,6 +2,7 @@ using DSLDungeon.Game.Entities;
 using DSLDungeon.Game.Entities.Combat;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Items;
+using DSLDungeon.Game.Entities.Particles;
 using DSLDungeon.Game.Entities.Stats;
 
 namespace DSLDungeon.Game.Core.Actions.Systems;
@@ -11,7 +12,7 @@ public class MeleeAttackEvent : AbilityEvent<MeleeAttackSystem>
 {
     public override string AbilityId => "melee_attack";
     public override int Priority => 3;
-    public override float CooldownSeconds => 0f; // замах = анимация, откат от скорости атаки
+    public override float CooldownSeconds => 0f;
     public override float CastTime => 0f;
 
     public EntityId TargetId { get; set; }
@@ -47,24 +48,20 @@ public class MeleeAttackEvent : AbilityEvent<MeleeAttackSystem>
     }
 }
 
-/// <summary>
-/// Способность ближнего боя. Проверяет откат, валидирует, наносит урон, управляет импульсом/комбо.
-/// </summary>
 [SystemOrder(30)]
 public class MeleeAttackSystem : AbilitySystem<MeleeAttackEvent>
 {
     protected override void OnAbilityStart(Actor actor, MeleeAttackEvent ev, WorldState world)
     {
-        // Лог замаха (прогноз)
-        var weapon = actor.GetComponent<EquipmentComponent>()?.Equipped
+        var weapon = actor.GetComponent<EquipmentComponent>().Equipped
             .GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
-        var stats = actor.GetComponent<StatsComponent>()?.Stats;
+        var stats = actor.GetComponent<StatsComponent>().Stats;
 
         if (weapon != null)
         {
             float baseDmg = ev.BaseDamage;
-            float str = stats?.GetValue(StatKeys.Strength) ?? 0;
-            float damageMore = stats?.GetValue(StatKeys.DamageMore) ?? 1f;
+            float str = stats.GetValue(StatKeys.Strength);
+            float damageMore = stats.GetValue(StatKeys.DamageMore);
             if (damageMore <= 0) damageMore = 1f;
 
             float predicted = (baseDmg + str * 0.5f) * damageMore;
@@ -85,7 +82,7 @@ public class MeleeAttackSystem : AbilitySystem<MeleeAttackEvent>
 
                 if (attackerHealth is { IsDead: false } && targetHealth is { IsDead: false })
                 {
-                    var weapon = actor.GetComponent<EquipmentComponent>()?.Equipped
+                    var weapon = actor.GetComponent<EquipmentComponent>().Equipped
                         .GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
 
                     var ctx = DamageContext.CreateMelee(actor, target, weapon);
@@ -94,7 +91,6 @@ public class MeleeAttackSystem : AbilitySystem<MeleeAttackEvent>
 
                     float damage = DamagePipeline.Calculate(ctx);
 
-                    // Импульс через CombatStateComponent
                     var combat = actor.GetComponent<CombatStateComponent>();
                     if (combat is { IsImpulseActive: true })
                     {
@@ -104,21 +100,18 @@ public class MeleeAttackSystem : AbilitySystem<MeleeAttackEvent>
 
                     ev.ComputedContext = ctx;
 
-                    // Лог фактического урона
                     string critTag = ctx.IsCritical ? "[КРИТ] " : "";
                     world.AddLog($"{critTag}[Удар] {actor.Name} → {target.Name}: {(int)damage} урона ({weapon?.Name ?? "без оружия"})");
 
                     targetHealth.ModifyHp(-(int)damage);
 
                     string damageText = ctx.IsCritical ? $"КРИТ! -{(int)damage}" : $"-{(int)damage}";
-                    world.PendingDamageTriggers.Add(new VisualDamageTrigger
-                    {
-                        Coords = target.Position,
-                        Text = damageText,
-                        Type = ctx.IsCritical ? "CritDamage" : "Damage"
-                    });
+                    world.PendingDamageTriggers.Add(new VisualDamageTrigger(
+                        target.Position,
+                        damageText,
+                        ctx.IsCritical ? "CritDamage" : "Damage"
+                    ));
 
-                    // Комбо через CombatStateComponent
                     combat?.OnHit(target);
 
                     if (targetHealth.IsDead && target is Actor targetActor)

@@ -1,26 +1,17 @@
-﻿using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace DSLDungeon.Game.Core.Time;
 
-/// <summary>
-/// Система управления игровым временем. Контролирует каналы и рассчитывает глобальный DeltaTime.
-/// </summary>
 public sealed class TimeSystem
 {
     private long _lastTimestamp;
-    private double _maxDeltaBarrier = 0.1; // По умолчанию 100 мс
+    private double _maxDeltaBarrier = 0.1;
     private readonly double _ticksToSeconds = 1.0 / Stopwatch.Frequency;
 
-    // Ограничиваем количество каналов фиксированным массивом для избежания аллокаций
     private readonly TimeChannel[] _channels = new TimeChannel[16];
     private int _channelCount;
 
-    /// <summary>
-    /// Максимальный порог для одного кадра (в секундах). 
-    /// Предотвращает скачки физики при потере фокуса вкладки браузера.
-    /// </summary>
     public double MaxDeltaBarrier
     {
         get => _maxDeltaBarrier;
@@ -29,21 +20,14 @@ public sealed class TimeSystem
 
     public TimeSystem()
     {
-        // Первичная фиксация времени при создании системы
         Initialize();
     }
 
-    /// <summary>
-    /// Инициализирует или сбрасывает точку отсчета времени.
-    /// </summary>
     public void Initialize()
     {
         _lastTimestamp = Stopwatch.GetTimestamp();
     }
 
-    /// <summary>
-    /// Создает и регистрирует новый канал времени.
-    /// </summary>
     public TimeChannel CreateChannel()
     {
         if (_channelCount >= _channels.Length)
@@ -56,9 +40,6 @@ public sealed class TimeSystem
         return channel;
     }
 
-    /// <summary>
-    /// Обновляет состояние всех зарегистрированных каналов времени.
-    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Update()
     {
@@ -68,7 +49,6 @@ public sealed class TimeSystem
 
         double rawDelta = elapsedTicks * _ticksToSeconds;
 
-        // Защита от больших скачков времени
         if (rawDelta > _maxDeltaBarrier)
         {
             rawDelta = _maxDeltaBarrier;

@@ -1,6 +1,5 @@
 namespace DSLDungeon.Game.Entities.Characters;
 using Core;
-using Combat;
 using Components;
 using Stats;
 using Grid;
@@ -66,6 +65,8 @@ public static class HeroFactory
 
     private static Actor? FindLowAlly(Actor actor, WorldState world)
     {
+        _ = actor;
+        _ = world;
         return null;
     }
 }

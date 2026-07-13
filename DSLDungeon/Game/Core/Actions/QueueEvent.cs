@@ -1,11 +1,10 @@
-﻿using System.Threading;
 using DSLDungeon.Game.Entities;
 
 namespace DSLDungeon.Game.Core.Actions;
 
 public interface IQueueEvent
 {
-    long Id { get; } // Теперь идентификатор числовой
+    long Id { get; }
     int Priority { get; }
     EventStatus Status { get; set; }
     EntityId Owner { get; set; }
@@ -18,7 +17,7 @@ public interface IQueueEvent
 
 public abstract class QueueEvent : IQueueEvent
 {
-    private static long _globalEventId; // Глобальный счетчик идентификаторов
+    private static long _globalEventId;
 
     public long Id { get; private set; } = Interlocked.Increment(ref _globalEventId);
     public abstract int Priority { get; }
@@ -32,7 +31,6 @@ public abstract class QueueEvent : IQueueEvent
 
     public virtual void Reset()
     {
-        // При возврате в пул просто выдаем новый быстрый ID
         Id = Interlocked.Increment(ref _globalEventId);
         Status = EventStatus.Pending;
         Owner = EntityId.None;

@@ -24,11 +24,8 @@ public class SpawnUnitEvent : SystemEvent<UnitSpawnerSystem>
     }
 }
 
-/// <summary>
-/// Системная обработка спавна: не абилка персонажа.
-/// </summary>
 [SystemOrder(40)]
-public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
+public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IEntityTrackingSystem
 {
     public override void Update(float deltaTime, WorldState world)
     {
@@ -61,7 +58,7 @@ public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
             var orc = OrcFactory.CreateGrunt(id, ev.UnitName, ev.SpawnCoords, world, waveLevel: 1);
 
             var dagger = WeaponPresets.CreateRustyDagger();
-            orc.GetComponent<EquipmentComponent>()?.Equip(EquipmentSlot.MainHand, dagger);
+            orc.GetComponent<EquipmentComponent>().Equip(EquipmentSlot.MainHand, dagger);
 
             newUnit = orc;
         }
@@ -71,7 +68,7 @@ public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IGameSystem
         }
         else
         {
-            System.Console.WriteLine($"[Спавнер] Ошибка: Неизвестный тип юнита {ev.UnitType}");
+            Console.WriteLine($"[Спавнер] Ошибка: Неизвестный тип юнита {ev.UnitType}");
             return;
         }
 

@@ -1,5 +1,3 @@
-using System;
-
 namespace DSLDungeon.Game.Grid;
 
 public readonly record struct HexCoords(int Q, int R)
@@ -11,20 +9,19 @@ public readonly record struct HexCoords(int Q, int R)
         return (Math.Abs(Q - other.Q) + Math.Abs(R - other.R) + Math.Abs(S - other.S)) / 2;
     }
 
-    public override string ToString() => $"({Q}, {R})";
-
-    public static readonly HexCoords[] Directions = 
-    {
-        new(1, 0), new(1, -1), new(0, -1), 
-        new(-1, 0), new(-1, 1), new(0, 1)
-    };
-
     public HexCoords GetNeighbor(int direction)
     {
-        var dir = Directions[direction % 6];
-        return this with { Q = Q + dir.Q, R = R + dir.R };
+        return direction switch
+        {
+            0 => new HexCoords(Q + 1, R),
+            1 => new HexCoords(Q + 1, R - 1),
+            2 => new HexCoords(Q, R - 1),
+            3 => new HexCoords(Q - 1, R),
+            4 => new HexCoords(Q - 1, R + 1),
+            5 => new HexCoords(Q, R + 1),
+            _ => this
+        };
     }
 
-    public static HexCoords operator -(HexCoords a, HexCoords b) => 
-        new(a.Q - b.Q, a.R - b.R);
+    public override string ToString() => $"({Q}, {R})";
 }

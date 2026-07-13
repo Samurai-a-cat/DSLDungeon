@@ -1,6 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-
 namespace DSLDungeon.Game.Grid;
 
 public class HexMap
@@ -61,10 +58,6 @@ public class HexMap
         }
     }
 
-    /// <summary>
-    /// Одноразовый метод генерации физических границ карты. 
-    /// Создает новые тайлы-стены на пустых координатах, граничащих с игровым полем.
-    /// </summary>
     private void BuildBoundaryWalls(TerrainType wallType, int elevation)
     {
         var borderCoords = new HashSet<HexCoords>();
@@ -87,19 +80,11 @@ public class HexMap
         }
     }
 
-    /// <summary>
-    /// Динамически окружает указанную область (набор координат) определенным типом тайлов во время игры.
-    /// Метод изменяет только существующие тайлы и игнорирует неразрушимые препятствия.
-    /// </summary>
-    /// <param name="targetArea">Список координат, которые нужно окружить (например, зона поражения заклинания).</param>
-    /// <param name="terrainType">Тип покрытия, который будет нанесен (например, лава, огонь, вода).</param>
-    /// <param name="elevation">Новая высота для окружения (опционально).</param>
     public void SurroundWith(IEnumerable<HexCoords> targetArea, TerrainType terrainType, int elevation = 0)
     {
         var targetsHash = new HashSet<HexCoords>(targetArea);
         var coordsToModify = new HashSet<HexCoords>();
 
-        // Находим все соседние клетки для всей области, исключая саму область
         foreach (var coords in targetsHash)
         {
             for (int i = 0; i < 6; i++)
@@ -112,7 +97,6 @@ public class HexMap
             }
         }
 
-        // Применяем изменения к существующим клеткам игрового поля
         ReplaceTile(terrainType, elevation, coordsToModify);
     }
 
@@ -132,7 +116,6 @@ public class HexMap
         }
     }
 
-#region Heplers
     public bool TryGetTile(HexCoords coords, out Tile tile)
     {
         return _tiles.TryGetValue(coords, out tile);
@@ -147,6 +130,4 @@ public class HexMap
     {
         return _tiles.Values;
     }
-#endregion
-
 }

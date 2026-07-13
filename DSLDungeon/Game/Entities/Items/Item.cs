@@ -1,11 +1,7 @@
-﻿using System.Collections.Generic;
 using DSLDungeon.Game.Entities.Stats;
 
 namespace DSLDungeon.Game.Entities.Items;
 
-/// <summary>
-/// Базовый класс предмета с модификаторами
-/// </summary>
 public abstract class Item
 {
     public string Name { get; }

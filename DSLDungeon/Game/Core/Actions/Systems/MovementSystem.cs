@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using DSLDungeon.Game.Entities;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Grid;
@@ -46,7 +44,7 @@ public class MoveEvent : QueueEvent<MovementSystem>
     }
 }
 
-public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem, IGameSystem
+public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem
 {
     private struct MoveReservation
     {
@@ -112,7 +110,6 @@ public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem, IGam
             {
                 world.AddLog($"[Скорость] {actor.Name} (ETA: {ev.Duration:0.0}s) отменил движение на {ev.TargetCoords.ToString()}: соперник прибудет туда раньше (осталось ETA: {reservation.Eta:0.0}s).");
                 ev.Status = EventStatus.Cancelled;
-                return;
             }
         }
         else
@@ -134,9 +131,8 @@ public class MovementSystem : GameSystem<MoveEvent>, IEntityTrackingSystem, IGam
         {
             actor.Position = ev.TargetCoords;
 
-            // Активируем импульс через CombatStateComponent (единая точка правды)
-            actor.GetComponent<CombatStateComponent>()?.ActivateImpulse(0.25f, 2.0f);
-            actor.GetComponent<PositionTrackerComponent>()?.OnMoved(ev.TargetCoords);
+            actor.GetComponent<CombatStateComponent>().ActivateImpulse(0.25f, 2.0f);
+            actor.GetComponent<PositionTrackerComponent>().OnMoved(ev.TargetCoords);
 
             ev.Status = EventStatus.Completed;
         }

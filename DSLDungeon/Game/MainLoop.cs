@@ -4,7 +4,6 @@ using DSLDungeon.Game.Core.Time;
 using DSLDungeon.Game.Entities;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Items;
-using DSLDungeon.Game.Entities.Stats;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game;
@@ -60,16 +59,14 @@ public class GameLoop
 
         int distance = actor.Position.DistanceTo(target.Position);
         var health = actor.GetComponent<HealthComponent>();
-        var stats = actor.GetComponent<StatsComponent>()?.Stats;
 
-        // === ЕДИНСТВЕННЫЙ ЛОГ ОТ ИИ — РЕШЕНИЕ ===
-        _world.AddLog($"[ИИ] {actor.Name} думает... (HP: {health?.CurrentHp}/{health?.MaxHp})");
+        _world.AddLog($"[ИИ] {actor.Name} думает... (HP: {health.CurrentHp}/{health.MaxHp})");
 
         if (distance > 1)
         {
             HexCoords nextStep = GetStepTowards(actor.Position, target.Position);
             float moveDuration = actor.Name.Contains("Рыцарь") ? 0.4f : 0.6f;
-        
+
             var moveEvent = EventPool.Get<MoveEvent>();
             moveEvent.Owner = actor.Id;
             moveEvent.TargetCoords = nextStep;
@@ -79,9 +76,9 @@ public class GameLoop
         }
         else
         {
-            var weapon = actor.GetComponent<EquipmentComponent>()?.Equipped
+            var weapon = actor.GetComponent<EquipmentComponent>().Equipped
                 .GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
-        
+
             if (weapon != null)
             {
                 var attackEvent = weapon.CreateAttackEvent(actor.Id, target.Id);
@@ -90,7 +87,6 @@ public class GameLoop
         }
     }
 
-// Убрать проверку GetType() в FindNearestEnemy — теперь дуэль по имени:
     private Actor? FindNearestEnemy(Actor actor)
     {
         Actor? nearest = null;
@@ -99,9 +95,8 @@ public class GameLoop
         foreach (var other in _world.GetAllActors())
         {
             if (other.Id == actor.Id) continue;
-            if (other.GetComponent<HealthComponent>()?.IsDead == true) continue;
-            
-            // В дуэли враг — тот, чьё имя отличается
+            if (other.GetComponent<HealthComponent>() is { IsDead: true }) continue;
+
             bool isEnemy = actor.Name.Contains("Рыцарь") ? other.Name.Contains("Орк") : other.Name.Contains("Рыцарь");
             if (!isEnemy) continue;
 

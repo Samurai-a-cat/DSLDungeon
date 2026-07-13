@@ -8,10 +8,7 @@ public class DieEvent : SystemEvent<DeathSystem>
     public override int Priority => 1;
 }
 
-/// <summary>
-/// Системная обработка смерти: не абилка, движок управляет.
-/// </summary>
-public class DeathSystem : GameSystem<DieEvent>, IEntityTrackingSystem, IGameSystem
+public class DeathSystem : GameSystem<DieEvent>, IEntityTrackingSystem
 {
     public new void Register(EntityId id) => base.Register(id);
     public new void Unregister(EntityId id) => base.Unregister(id);
