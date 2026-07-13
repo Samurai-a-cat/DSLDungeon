@@ -1,6 +1,5 @@
 using DSLDungeon.Game.Core.Actions;
 using DSLDungeon.Game.Entities;
-using DSLDungeon.Game.Entities.Components;
 
 namespace DSLDungeon.Game.Core.Processes;
 

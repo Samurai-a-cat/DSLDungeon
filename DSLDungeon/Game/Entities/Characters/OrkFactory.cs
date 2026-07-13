@@ -1,5 +1,4 @@
 using DSLDungeon.Game.Core;
-using DSLDungeon.Game.Entities.Combat;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Stats;
 using DSLDungeon.Game.Grid;

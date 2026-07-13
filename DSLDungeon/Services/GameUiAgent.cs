@@ -83,9 +83,9 @@ public class GameUiAgent
             if (_persistentInspector.TryGetValue(entity.Id, out var snapshot))
             {
                 snapshot.Position = entity.Position.ToString();
-                snapshot.CurrentHp = health?.CurrentHp ?? 0;
-                snapshot.MaxHp = health?.MaxHp ?? 0;
-                snapshot.IsDead = health?.IsDead ?? false;
+                snapshot.CurrentHp = health.CurrentHp;
+                snapshot.MaxHp = health.MaxHp;
+                snapshot.IsDead = health.IsDead;
             }
             else
             {
@@ -94,9 +94,9 @@ public class GameUiAgent
                     Id = entity.Id,
                     Name = entity.Name,
                     Position = entity.Position.ToString(),
-                    CurrentHp = health?.CurrentHp ?? 0,
-                    MaxHp = health?.MaxHp ?? 0,
-                    IsDead = health?.IsDead ?? false
+                    CurrentHp = health.CurrentHp,
+                    MaxHp = health.MaxHp,
+                    IsDead = health.IsDead
                 };
             }
         }
@@ -218,8 +218,8 @@ public class GameUiAgent
                     }
                 }
 
-                int maxHp = health?.MaxHp ?? 100;
-                int currentHp = health?.CurrentHp ?? 100;
+                int maxHp = health.MaxHp;
+                int currentHp = health.CurrentHp;
                 float hpPercent = (float)currentHp / maxHp;
 
                 if (!_persistentActors.TryGetValue(actor.Id, out var actorSnap))

@@ -1,4 +1,3 @@
-using System;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Stats;
 

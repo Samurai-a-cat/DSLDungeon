@@ -40,6 +40,9 @@ public class Entity
 
     public T AddComponent<T>(T component) where T : EntityComponent
     {
+        if (_components.ContainsKey(typeof(T)))
+            throw new InvalidOperationException($"Entity {Name} already has {typeof(T).Name}");
+            
         _components[typeof(T)] = component;
         component.OnAttached(this);
         return component;

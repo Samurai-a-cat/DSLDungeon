@@ -1,6 +1,5 @@
 namespace DSLDungeon.Game.Entities.Characters;
 using Core;
-using Combat;
 using Components;
 using Stats;
 using Grid;

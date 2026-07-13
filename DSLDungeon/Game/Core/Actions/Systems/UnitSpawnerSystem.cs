@@ -25,7 +25,7 @@ public class SpawnUnitEvent : SystemEvent<UnitSpawnerSystem>
 }
 
 [SystemOrder(40)]
-public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>, IEntityTrackingSystem
+public class UnitSpawnerSystem : GameSystem<SpawnUnitEvent>
 {
     public override void Update(float deltaTime, WorldState world)
     {

@@ -1,4 +1,3 @@
-using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Items;
 
 namespace DSLDungeon.Game.Entities.Combat;

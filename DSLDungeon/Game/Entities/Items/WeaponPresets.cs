@@ -14,7 +14,7 @@ public static class WeaponPresets
 
     public static Weapon CreateSwordOfJustice()
     {
-        var w = new Weapon("Меч правосудия", 15, 1, 0.8f, "Physical");
+        var w = new Weapon("Меч правосудия", 15, 1, 0.8f);
         w.Quality = 1.5f;
         w.AddModifier(StatKeys.Strength, StatModifier.Added(5, ModifierSource.Equipment));
         w.AddModifier(StatKeys.CritChance, StatModifier.Added(0.1f, ModifierSource.Equipment));

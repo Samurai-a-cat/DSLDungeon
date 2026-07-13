@@ -15,7 +15,7 @@ public abstract class AbilitySystem<TEvent> : GameSystem<TEvent>
         var cds = actor.GetComponent<AbilityCooldownComponent>();
 
         // 1. Проверка отката
-        if (cds != null && cds.Cooldowns.TryGetValue(ev.AbilityId, out var remaining))
+        if (cds.Cooldowns.TryGetValue(ev.AbilityId, out var remaining))
         {
             world.AddLog($"[Откат] {actor.Name}: {ev.AbilityId} ещё {remaining:F1}с!");
             ev.Status = EventStatus.Cancelled;
@@ -34,7 +34,7 @@ public abstract class AbilitySystem<TEvent> : GameSystem<TEvent>
         ev.PayCost(actor, world);
 
         // 4. Запуск отката
-        cds?.Cooldowns.Add(ev.AbilityId, ev.CooldownSeconds);
+        cds.Cooldowns.Add(ev.AbilityId, ev.CooldownSeconds);
 
         // 5. Каст-тайм (лог)
         if (ev.CastTime > 0)
