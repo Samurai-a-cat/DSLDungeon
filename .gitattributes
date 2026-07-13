@@ -1,0 +1,15 @@
+# Автоматически определять текстовые файлы
+* text=auto
+
+# C# — всегда LF (как принято в .NET Core / Linux / CI)
+*.cs text eol=lf
+*.csproj text eol=lf
+*.sln text eol=lf
+*.razor text eol=lf
+*.css text eol=lf
+
+# Бинарники — никогда не трогать
+*.png binary
+*.jpg binary
+*.dll binary
+*.wasm binary
