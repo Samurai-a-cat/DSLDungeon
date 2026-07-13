@@ -32,13 +32,13 @@ public class StatsComponent : EntityComponent
         };
     }
 
-    public void SetupBaseStats(float str, float dex, float int_, float con)
+    public void SetupBaseStats(float str, float dex, float @int, float con)
     {
         Stats.InitializeBaseStats(new()
         {
             [StatKeys.Strength] = str,
             [StatKeys.Dexterity] = dex,
-            [StatKeys.Intelligence] = int_,
+            [StatKeys.Intelligence] = @int,
             [StatKeys.Constitution] = con,
         });
 

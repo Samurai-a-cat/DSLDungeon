@@ -4,8 +4,6 @@ namespace DSLDungeon.Game.Grid;
 
 public readonly record struct HexCoords(int Q, int R)
 {
-    public int Q { get; } = Q; 
-    public int R { get; } = R; 
     public int S => -Q - R; 
 
     public int DistanceTo(HexCoords other)
@@ -24,7 +22,7 @@ public readonly record struct HexCoords(int Q, int R)
     public HexCoords GetNeighbor(int direction)
     {
         var dir = Directions[direction % 6];
-        return new HexCoords(Q + dir.Q, R + dir.R);
+        return this with { Q = Q + dir.Q, R = R + dir.R };
     }
 
     public static HexCoords operator -(HexCoords a, HexCoords b) => 

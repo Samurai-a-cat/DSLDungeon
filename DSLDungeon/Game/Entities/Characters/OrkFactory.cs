@@ -17,7 +17,7 @@ public static class OrcFactory
         stats.SetupBaseStats(
             str: 8 * waveMult, 
             dex: 6 * waveMult, 
-            int_: 3 * waveMult, 
+            @int: 3 * waveMult, 
             con: 7 * waveMult
         );
         
@@ -38,7 +38,7 @@ public static class OrcFactory
         var orc = new Actor(id, name, position);
         
         var stats = orc.AddComponent(new StatsComponent());
-        stats.SetupBaseStats(str: 20, dex: 8, int_: 4, con: 18);
+        stats.SetupBaseStats(str: 20, dex: 8, @int: 4, con: 18);
         
         // Уникальные модификаторы чемпиона
         stats.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(15, "Physical"));

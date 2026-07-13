@@ -1,5 +1,6 @@
 using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Entities.Components;
+using DSLDungeon.Game.Entities.Systems;
 using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game.Entities;
@@ -19,9 +20,13 @@ public class Entity
         Position = position;
     }
 
-    public T? GetComponent<T>() where T : EntityComponent
+    public T GetComponent<T>() where T : EntityComponent
     {
-        return _components.TryGetValue(typeof(T), out var comp) ? (T)comp : null;
+        if  (_components.TryGetValue(typeof(T) , out var component))
+        {
+            return (T)component;
+        }
+        return null;
     }
 
     public bool HasComponent<T>() where T : EntityComponent => _components.ContainsKey(typeof(T));

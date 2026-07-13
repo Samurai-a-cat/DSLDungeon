@@ -1,10 +1,9 @@
-﻿using DSLDungeon.Game.Core;
-using DSLDungeon.Game.Entities.Combat;
-using DSLDungeon.Game.Entities.Components;
-using DSLDungeon.Game.Entities.Stats;
-using DSLDungeon.Game.Grid;
-
-namespace DSLDungeon.Game.Entities.Characters;
+﻿namespace DSLDungeon.Game.Entities.Characters;
+using Core;
+using Combat;
+using Components;
+using Stats;
+using Grid;
 
 public static class HeroFactory
 {
@@ -13,7 +12,7 @@ public static class HeroFactory
         var hero = new Actor(id, "Рыцарь", position);
         
         var stats = hero.AddComponent(new StatsComponent());
-        stats.SetupBaseStats(str: 15, dex: 10, int_: 8, con: 12);
+        stats.SetupBaseStats(str: 15, dex: 10, @int: 8, con: 12);
         
         stats.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(10, "Physical"));
         stats.Stats.AddModifier(StatKeys.Armor, StatModifier.Base(5));
@@ -25,9 +24,9 @@ public static class HeroFactory
         hero.AddComponent(new EquipmentComponent());
         hero.AddComponent(new CombatStateComponent());
         
-        hero.AddComponent(new ImpulseComponent
+        hero.AddComponent(new ImpulseComponent //TODO переделать на систему
         {
-            BonusDamagePercent = 2f, //TODO дебаг, потом вернуть как было
+            BonusDamagePercent = 2f,
             DurationSeconds = 2.0f
         });
         
@@ -39,7 +38,7 @@ public static class HeroFactory
         var hero = new Actor(id, "Маг", position);
         
         var stats = hero.AddComponent(new StatsComponent());
-        stats.SetupBaseStats(str: 6, dex: 10, int_: 18, con: 8);
+        stats.SetupBaseStats(str: 6, dex: 10, @int: 18, con: 8);
         
         stats.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(5, "Fire"));
         stats.Stats.AddModifier(StatKeys.CastSpeed, StatModifier.Base(1.3f));
