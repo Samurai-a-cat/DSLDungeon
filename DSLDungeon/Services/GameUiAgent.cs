@@ -8,6 +8,7 @@ namespace DSLDungeon.Services;
 
 public class GameUiAgent
 {
+    public bool IsUiSyncEnabled { get; set; } = true;
     // --- ПУБЛИЧНЫЕ БУФЕРЫ ВЫВОДА ---
     public List<EntitySnapshot> Entities { get; } = new();
     public List<TileSnapshot> MapTiles { get; private set; } = new();

@@ -37,6 +37,7 @@ public readonly record struct StatKey : IEquatable<StatKey>
     public static readonly StatKey DamageAdded = Register("DamageAdded");
     public static readonly StatKey DamageMore = Register("DamageMore");
     public static readonly StatKey DamageFinal = Register("DamageFinal");
+    public static readonly StatKey DmgAddedMult = Register("dmg_added_mult");
 
     public static readonly StatKey DamagePhysicalPct = Register("DamagePhysicalPct");
     public static readonly StatKey DamageFirePct = Register("DamageFirePct");

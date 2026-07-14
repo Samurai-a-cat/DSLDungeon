@@ -77,10 +77,20 @@ public class GameService : IDisposable
                 Loop.Update();
 
                 float dt = Loop.GameTimeChannel.Delta.Value;
-                UiAgent.SyncFromGame(World, dt);
+
+                // Синхронизируем UI только если это включено
+                if (UiAgent.IsUiSyncEnabled)
+                {
+                    UiAgent.SyncFromGame(World, dt);
+                }
             }
         }
         catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[КРИТИЧЕСКАЯ ОШИБКА ИГРОВОГО ЦИКЛА]: {ex}");
+            World.AddLog($"[ОШИБКА]: {ex.Message}");
+        }
     }
 
     public void Stop()

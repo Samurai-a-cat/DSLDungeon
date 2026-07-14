@@ -10,7 +10,6 @@ public class NarratorProcess : IGameSystem
 {
     private int _currentWave = 1;
     private bool _waveInProgress = true;
-    private readonly Random _random = new();
 
     public void Update(float deltaTime, WorldState world)
     {
@@ -61,7 +60,7 @@ public class NarratorProcess : IGameSystem
 
         if (candidates.Count > 0)
         {
-            return candidates[_random.Next(candidates.Count)];
+            return candidates[GameRandom.Next(candidates.Count)];
         }
 
         return new HexCoords(2, 0);

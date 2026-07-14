@@ -1,4 +1,5 @@
 using System;
+using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Stats;
 
@@ -24,7 +25,7 @@ public static class DamagePipeline
         float baseResult = (baseDamage + strBonus) * (1 + attackerStats.GetValue(StatKey.DamageBase) / 100);
 
         float addedDamage = attackerStats.GetValue(StatKey.DamageAdded);
-        float addedResult = addedDamage * (1 + attackerStats.GetValue(StatKeyRegistry.Parse("dmg_added_mult")));
+        float addedResult = addedDamage * (1 + attackerStats.GetValue(StatKey.DmgAddedMult));
 
         float moreMult = attackerStats.GetValue(StatKey.DamageMore);
         if (moreMult <= 0) moreMult = 1f;
@@ -57,7 +58,7 @@ public static class DamagePipeline
         }
 
         float critChance = attackerStats.GetValue(StatKey.CritChance);
-        bool isCrit = new Random().NextDouble() < critChance;
+        bool isCrit = GameRandom.Chance(critChance);
         float critMult = isCrit ? attackerStats.GetValue(StatKey.CritMultiplier) : 1f;
 
         float subtotal = (baseResult + addedResult) * moreMult;
