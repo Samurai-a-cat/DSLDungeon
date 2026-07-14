@@ -13,7 +13,7 @@ public class GameService : IDisposable
     public WorldState World { get; private set; }
     public GameLoop Loop { get; private set; }
     public GameUiAgent UiAgent { get; } = new();
-
+    
     private bool _isRunning;
     private CancellationTokenSource? _cts;
 
@@ -43,12 +43,12 @@ public class GameService : IDisposable
 
         World.SpawnEntity(orc);
 
-        World.AddLog("╔══════════════════════════════════════════════════════════════╗");
-        World.AddLog("║         ДУЭЛЬ: Рыцарь vs Орк-Чемпион Грумш                 ║");
-        World.AddLog("╠══════════════════════════════════════════════════════════════╣");
+        World.AddLog("╔═════════════════════════════════════════════════════════════════╗");
+        World.AddLog("║              ДУЭЛЬ: Рыцарь vs Орк-Чемпион Грумш                 ║");
+        World.AddLog("╠═════════════════════════════════════════════════════════════════╣");
         World.AddLog("║  Рыцарь:  Сила 15 | Ловк 10 | Инт 8  | Тел 12 | Меч правосудия  ║");
         World.AddLog("║  Грумш:   Сила 20 | Ловк 8  | Инт 4  | Тел 18 | Топор чемпиона  ║");
-        World.AddLog("╚══════════════════════════════════════════════════════════════╝");
+        World.AddLog("╚═════════════════════════════════════════════════════════════════╝");
 
         UiAgent.SyncFromGame(World, 0f);
     }
