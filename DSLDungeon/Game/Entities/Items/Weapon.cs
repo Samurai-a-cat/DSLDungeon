@@ -1,6 +1,7 @@
 using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Core.Actions;
 using DSLDungeon.Game.Core.Actions.Systems;
+using DSLDungeon.Game.Entities.Combat;
 
 namespace DSLDungeon.Game.Entities.Items;
 
@@ -9,13 +10,13 @@ public class Weapon : Item
     public int BaseDamage { get; }
     public int Range { get; }
     public float BaseAttackSpeed { get; } 
-    public string DamageType { get; }
+    public DamageType DamageType { get; }
     public bool IsRanged { get; }
 
     public float Quality { get; set; } = 1.0f;
 
     public Weapon(string name, int baseDamage, int range, float attackSpeed, 
-        string damageType = "Physical", bool isRanged = false) : base(name)
+        DamageType damageType = DamageType.Physical, bool isRanged = false) : base(name)
     {
         BaseDamage = baseDamage;
         Range = range;
@@ -34,7 +35,7 @@ public class Weapon : Item
         ev.BaseDamage = BaseDamage;
         ev.DamageType = DamageType;
         ev.Duration = BaseAttackSpeed;
-        
+
         return ev;
     }
 }

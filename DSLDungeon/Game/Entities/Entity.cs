@@ -29,10 +29,15 @@ public class Entity
             $"Базовые компоненты должны добавляться в конструкторе или фабрике.");
     }
 
-    public T? TryGetComponent<T>() where T : EntityComponent
+    public bool TryGetComponent<T>(out T result) where T : EntityComponent
     {
-        _components.TryGetValue(typeof(T), out var component);
-        return (T?)component;
+        if (_components.TryGetValue(typeof(T), out var component))
+        {
+            result = (component as T)!;
+            return true;
+        }
+        result = null!;
+        return false;
     }
 
     public bool HasComponent<T>() where T : EntityComponent =>
@@ -40,9 +45,6 @@ public class Entity
 
     public T AddComponent<T>(T component) where T : EntityComponent
     {
-        if (_components.ContainsKey(typeof(T)))
-            throw new InvalidOperationException($"Entity {Name} already has {typeof(T).Name}");
-            
         _components[typeof(T)] = component;
         component.OnAttached(this);
         return component;

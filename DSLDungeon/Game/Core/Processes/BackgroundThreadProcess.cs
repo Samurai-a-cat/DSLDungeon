@@ -11,8 +11,7 @@ public class BackgroundThreadProcess : IGameSystem
     {
         foreach (var actor in world.GetAllActors())
         {
-            var thread = actor.TryGetComponent<BackgroundThreadData>();
-            if (thread == null) continue;
+            if (!actor.TryGetComponent<BackgroundThreadData>(out var thread)) continue;
             if (actor.Health.IsDead) continue;
 
             thread.AccumulatedTime += deltaTime;

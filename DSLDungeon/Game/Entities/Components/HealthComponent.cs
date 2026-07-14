@@ -1,4 +1,4 @@
-﻿using DSLDungeon.Game.Entities.Stats;
+using DSLDungeon.Game.Entities.Stats;
 
 namespace DSLDungeon.Game.Entities.Components;
 
@@ -9,7 +9,7 @@ public class HealthComponent : EntityComponent
         get
         {
             var stats = Owner.GetComponent<StatsComponent>();
-            return (int)(stats.GetValue(StatKeys.Constitution) * 10);
+            return (int)(stats.GetValue(StatKey.Constitution) * 10);
         }
     }
 

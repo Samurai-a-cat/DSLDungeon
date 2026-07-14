@@ -1,3 +1,4 @@
+using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Items;
 
 namespace DSLDungeon.Game.Entities.Combat;
@@ -9,7 +10,7 @@ public class DamageContext
     public Weapon? Weapon { get; set; }
 
     public float BaseDamage { get; set; }
-    public string DamageType { get; set; } = "Physical";
+    public DamageType DamageType { get; set; } = DamageType.Physical;
 
     public float Distance { get; set; }
     public bool IsBackstab { get; set; }

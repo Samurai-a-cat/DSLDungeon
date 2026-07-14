@@ -1,5 +1,6 @@
 namespace DSLDungeon.Game.Entities.Characters;
 using Core;
+using Combat;
 using Components;
 using Stats;
 using Grid;
@@ -11,9 +12,9 @@ public static class HeroFactory
         var hero = new Actor(id, "Рыцарь", position);
 
         hero.Stats.SetupBaseStats(str: 15, dex: 10, @int: 8, con: 12);
-        hero.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(10, "Physical"));
-        hero.Stats.AddModifier(StatKeys.Armor, StatModifier.Base(5));
-        hero.Stats.AddModifier(StatKeys.BlockChance, StatModifier.Base(0.15f));
+        hero.Stats.AddModifier(StatKey.DamageBase, StatModifier.Base(10, "Physical"));
+        hero.Stats.AddModifier(StatKey.Armor, StatModifier.Base(5));
+        hero.Stats.AddModifier(StatKey.BlockChance, StatModifier.Base(0.15f));
 
         hero.Health.Initialize(120);
 
@@ -27,9 +28,9 @@ public static class HeroFactory
         var hero = new Actor(id, "Маг", position);
 
         hero.Stats.SetupBaseStats(str: 6, dex: 10, @int: 18, con: 8);
-        hero.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(5, "Fire"));
-        hero.Stats.AddModifier(StatKeys.CastSpeed, StatModifier.Base(1.3f));
-        hero.Stats.AddModifier(StatKeys.ResistanceFire, StatModifier.Base(0.25f));
+        hero.Stats.AddModifier(StatKey.DamageBase, StatModifier.Base(5, "Fire"));
+        hero.Stats.AddModifier(StatKey.CastSpeed, StatModifier.Base(1.3f));
+        hero.Stats.AddModifier(StatKey.ResistanceFire, StatModifier.Base(0.25f));
 
         hero.Health.Initialize(80);
 

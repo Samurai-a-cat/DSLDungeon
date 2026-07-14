@@ -1,4 +1,5 @@
 using DSLDungeon.Game.Core;
+using DSLDungeon.Game.Entities.Combat;
 using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Stats;
 using DSLDungeon.Game.Grid;
@@ -19,7 +20,7 @@ public static class OrcFactory
             con: 7 * waveMult
         );
 
-        orc.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(3 * waveMult, "Physical"));
+        orc.Stats.AddModifier(StatKey.DamageBase, StatModifier.Base(3 * waveMult, "Physical"));
 
         orc.Health.Initialize((int)(70 * waveMult));
 
@@ -35,10 +36,10 @@ public static class OrcFactory
 
         orc.Stats.SetupBaseStats(str: 20, dex: 8, @int: 4, con: 18);
 
-        orc.Stats.AddModifier(StatKeys.DamageBase, StatModifier.Base(15, "Physical"));
-        orc.Stats.AddModifier(StatKeys.Armor, StatModifier.Base(12));
-        orc.Stats.AddModifier(StatKeys.CritChance, StatModifier.Added(0.08f, ModifierSource.BaseStats));
-        orc.Stats.AddModifier(StatKeys.ResistancePhysical, StatModifier.Base(0.15f));
+        orc.Stats.AddModifier(StatKey.DamageBase, StatModifier.Base(15, "Physical"));
+        orc.Stats.AddModifier(StatKey.Armor, StatModifier.Base(12));
+        orc.Stats.AddModifier(StatKey.CritChance, StatModifier.Added(0.08f, ModifierSource.BaseStats));
+        orc.Stats.AddModifier(StatKey.ResistancePhysical, StatModifier.Base(0.15f));
 
         orc.Health.Initialize(180);
 

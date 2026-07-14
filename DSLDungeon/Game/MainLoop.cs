@@ -75,8 +75,9 @@ public class GameLoop
         }
         else
         {
-            var weapon = actor.TryGetComponent<EquipmentComponent>()?.Equipped
-                .GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
+            Weapon? weapon = null;
+            if (actor.TryGetComponent<EquipmentComponent>(out var eq))
+                weapon = eq.Equipped.GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
 
             if (weapon != null)
             {

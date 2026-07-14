@@ -12,8 +12,7 @@ public class BerserkRageProcess : IGameSystem
     {
         foreach (var actor in world.GetAllActors())
         {
-            var data = actor.TryGetComponent<BerserkRageData>();
-            if (data == null) continue;
+            if (!actor.TryGetComponent<BerserkRageData>(out var data)) continue;
 
             float hpPercent = (float)actor.Health.CurrentHp / actor.Health.MaxHp;
 
@@ -22,7 +21,7 @@ public class BerserkRageProcess : IGameSystem
                 float missing = data.HpThresholdPercent - hpPercent;
                 float bonus = missing * data.DamageBonusPerMissingHp;
                 actor.Stats.RemoveModifiersFromSource(ModifierSource.PassiveSkill);
-                actor.Stats.AddModifier(StatKeys.DamageMore,
+                actor.Stats.AddModifier(StatKey.DamageMore,
                     StatModifier.More(1.0f + bonus, ModifierSource.PassiveSkill));
             }
             else

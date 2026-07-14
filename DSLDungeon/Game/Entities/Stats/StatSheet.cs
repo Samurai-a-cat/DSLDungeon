@@ -1,31 +1,54 @@
+using System.Linq;
+
 namespace DSLDungeon.Game.Entities.Stats;
 
 public class StatSheet
 {
-    private readonly Dictionary<string, StatStack> _stats = new();
+    private readonly StatStack?[] _stats = new StatStack?[StatKeyRegistry.Capacity];
+    private readonly Dictionary<int, StatStack> _overflow = new();
 
-    public event Action<string, float>? OnStatChanged;
+    public event Action<StatKey, float>? OnStatChanged;
 
-    public StatStack GetOrCreate(string key)
+    public StatStack GetOrCreate(StatKey key)
     {
-        if (!_stats.TryGetValue(key, out var stack))
+        int id = key.Id;
+
+        if (id < _stats.Length)
+        {
+            if (_stats[id] == null)
+                _stats[id] = new StatStack();
+            return _stats[id]!;
+        }
+
+        if (!_overflow.TryGetValue(id, out var stack))
         {
             stack = new StatStack();
-            _stats[key] = stack;
+            _overflow[id] = stack;
         }
         return stack;
     }
 
-    public bool HasStat(string key) => _stats.ContainsKey(key);
-
-    public float GetValue(string key)
+    public bool HasStat(StatKey key)
     {
-        if (_stats.TryGetValue(key, out var stack))
+        int id = key.Id;
+        if (id < _stats.Length) return _stats[id] != null;
+        return _overflow.ContainsKey(id);
+    }
+
+    public float GetValue(StatKey key)
+    {
+        int id = key.Id;
+
+        if (id < _stats.Length && _stats[id] != null)
+            return _stats[id]!.Calculate();
+
+        if (_overflow.TryGetValue(id, out var stack))
             return stack.Calculate();
+
         return 0f;
     }
 
-    public void AddModifier(string key, StatModifier mod)
+    public void AddModifier(StatKey key, StatModifier mod)
     {
         var stack = GetOrCreate(key);
         stack.AddModifier(mod);
@@ -34,45 +57,83 @@ public class StatSheet
 
     public void RemoveModifiersFromSource(ModifierSource source)
     {
-        foreach (var kvp in _stats)
+        for (int i = 0; i < _stats.Length; i++)
+        {
+            if (_stats[i] == null) continue;
+            int beforeCount = _stats[i]!.Modifiers.Count;
+            _stats[i]!.RemoveModifiersFromSource(source);
+            if (_stats[i]!.Modifiers.Count != beforeCount)
+                OnStatChanged?.Invoke(new StatKey(i), _stats[i]!.Calculate());
+        }
+
+        foreach (var kvp in _overflow.ToList())
         {
             int beforeCount = kvp.Value.Modifiers.Count;
             kvp.Value.RemoveModifiersFromSource(source);
             if (kvp.Value.Modifiers.Count != beforeCount)
-            {
-                OnStatChanged?.Invoke(kvp.Key, kvp.Value.Calculate());
-            }
+                OnStatChanged?.Invoke(new StatKey(kvp.Key), kvp.Value.Calculate());
         }
     }
 
     public void RemoveModifiersByTag(string tag)
     {
-        foreach (var kvp in _stats)
+        for (int i = 0; i < _stats.Length; i++)
+        {
+            if (_stats[i] == null) continue;
+            int beforeCount = _stats[i]!.Modifiers.Count;
+            _stats[i]!.RemoveModifiersByTag(tag);
+            if (_stats[i]!.Modifiers.Count != beforeCount)
+                OnStatChanged?.Invoke(new StatKey(i), _stats[i]!.Calculate());
+        }
+
+        foreach (var kvp in _overflow.ToList())
         {
             int beforeCount = kvp.Value.Modifiers.Count;
             kvp.Value.RemoveModifiersByTag(tag);
             if (kvp.Value.Modifiers.Count != beforeCount)
-            {
-                OnStatChanged?.Invoke(kvp.Key, kvp.Value.Calculate());
-            }
+                OnStatChanged?.Invoke(new StatKey(kvp.Key), kvp.Value.Calculate());
         }
     }
 
-    public void InitializeBaseStats(Dictionary<string, float> baseValues)
+    public void InitializeBaseStats(Dictionary<StatKey, float> baseValues)
     {
         foreach (var kvp in baseValues)
-        {
             GetOrCreate(kvp.Key).AddModifier(StatModifier.Base(kvp.Value));
-        }
     }
 
-    public Dictionary<string, float> GetAllCalculatedValues()
+    public Dictionary<StatKey, float> GetAllCalculatedValues()
+    {
+        var result = new Dictionary<StatKey, float>();
+        for (int i = 0; i < _stats.Length; i++)
+        {
+            if (_stats[i] != null)
+                result[new StatKey(i)] = _stats[i]!.Calculate();
+        }
+        foreach (var kvp in _overflow)
+            result[new StatKey(kvp.Key)] = kvp.Value.Calculate();
+        return result;
+    }
+
+    // --- Сериализация: читаемые строки на диске ---
+    public Dictionary<string, float> Serialize()
     {
         var result = new Dictionary<string, float>();
-        foreach (var kvp in _stats)
+        for (int i = 0; i < _stats.Length; i++)
         {
-            result[kvp.Key] = kvp.Value.Calculate();
+            if (_stats[i] != null)
+                result[StatKeyRegistry.GetName(i)] = _stats[i]!.Calculate();
         }
+        foreach (var kvp in _overflow)
+            result[StatKeyRegistry.GetName(kvp.Key)] = kvp.Value.Calculate();
         return result;
+    }
+
+    public void Deserialize(Dictionary<string, float> data)
+    {
+        foreach (var kvp in data)
+        {
+            if (StatKeyRegistry.TryParse(kvp.Key, out var key))
+                GetOrCreate(key).AddModifier(StatModifier.Base(kvp.Value));
+        }
     }
 }

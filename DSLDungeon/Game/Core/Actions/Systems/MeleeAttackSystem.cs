@@ -17,7 +17,7 @@ public class MeleeAttackEvent : AbilityEvent<MeleeAttackSystem>
 
     public EntityId TargetId { get; set; }
     public float BaseDamage { get; set; }
-    public string DamageType { get; set; } = "Physical";
+    public DamageType DamageType { get; set; } = DamageType.Physical;
     public float Duration { get; set; }
     public float ElapsedTime { get; set; }
 
@@ -41,7 +41,7 @@ public class MeleeAttackEvent : AbilityEvent<MeleeAttackSystem>
         base.Reset();
         TargetId = default;
         BaseDamage = 0;
-        DamageType = "Physical";
+        DamageType = DamageType.Physical;
         Duration = 0f;
         ElapsedTime = 0f;
         ComputedContext = null;
@@ -53,15 +53,16 @@ public class MeleeAttackSystem : AbilitySystem<MeleeAttackEvent>
 {
     protected override void OnAbilityStart(Actor actor, MeleeAttackEvent ev, WorldState world)
     {
-        var weapon = actor.TryGetComponent<EquipmentComponent>()?.Equipped
-            .GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
+        Weapon? weapon = null;
+        if (actor.TryGetComponent<EquipmentComponent>(out var eq))
+            weapon = eq.Equipped.GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
         var stats = actor.Stats;
 
         if (weapon != null)
         {
             float baseDmg = ev.BaseDamage;
-            float str = stats.GetValue(StatKeys.Strength);
-            float damageMore = stats.GetValue(StatKeys.DamageMore);
+            float str = stats.GetValue(StatKey.Strength);
+            float damageMore = stats.GetValue(StatKey.DamageMore);
             if (damageMore <= 0) damageMore = 1f;
 
             float predicted = (baseDmg + str * 0.5f) * damageMore;
@@ -82,8 +83,9 @@ public class MeleeAttackSystem : AbilitySystem<MeleeAttackEvent>
 
                 if (!attackerHealth.IsDead && targetHealth is { IsDead: false })
                 {
-                    var weapon = actor.TryGetComponent<EquipmentComponent>()?.Equipped
-                        .GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
+                    Weapon? weapon = null;
+                    if (actor.TryGetComponent<EquipmentComponent>(out var eq))
+                        weapon = eq.Equipped.GetValueOrDefault(EquipmentSlot.MainHand) as Weapon;
 
                     var ctx = DamageContext.CreateMelee(actor, target, weapon);
                     ctx.BaseDamage = ev.BaseDamage;
