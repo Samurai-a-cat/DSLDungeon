@@ -16,9 +16,11 @@
         <!-- Code Editor -->
         <PackageReference Include="BlazorMonaco" Version="3.5.0" />
 
-        <!-- Roslyn Scripting -->
+        <!-- Roslyn -->
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.12.0" />
+
+        <!-- Reference assemblies for .NET 9 -->
+        <PackageReference Include="Basic.Reference.Assemblies.Net90" Version="1.8.9" />
     </ItemGroup>
 
     <ItemGroup>

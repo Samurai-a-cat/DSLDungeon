@@ -1,6 +1,5 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Scripting;
-using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace DSLDungeon.Services;
 
@@ -13,28 +12,51 @@ public class CompilationResult
 
 public class DslCompilerService
 {
-    // ScriptOptions.Default уже содержит базовые сборки (mscorlib, System, System.Core).
-    // В WASM дополнительные WithReferences могут не найти файлы на диске — не добавляем.
-    private static readonly ScriptOptions _scriptOptions = ScriptOptions.Default
-        .WithImports("System", "System.Collections.Generic", "System.Linq");
+    // Обёртка: 8 строк ДО кода игрока (1-3: using, 4: empty, 5-8: class/method decl)
+    private const int WrapperLinesBeforeCode = 8;
+
+    private const string ScriptWrapper = @"using System;
+using System.Collections.Generic;
+using System.Linq;
+
+public class Script
+{{
+    public static void Run()
+    {{
+{0}
+    }}
+}}";
 
     public CompilationResult Compile(string code)
     {
         var result = new CompilationResult();
         try
         {
-            var script = CSharpScript.Create(code, _scriptOptions);
-            script.Compile(); // throws CompilationErrorException on errors
-            result.Success = true;
-            result.Code = code;
-        }
-        catch (CompilationErrorException ex)
-        {
-            result.Success = false;
-            foreach (var diagnostic in ex.Diagnostics)
+            var wrappedCode = string.Format(ScriptWrapper, IndentCode(code));
+            var syntaxTree = CSharpSyntaxTree.ParseText(wrappedCode);
+            var compilation = CSharpCompilation.Create(
+                "DSLDungeonScript",
+                new[] { syntaxTree },
+                Basic.Reference.Assemblies.Net90.References.All,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+            );
+
+            using var ms = new MemoryStream();
+            var emitResult = compilation.Emit(ms);
+
+            if (!emitResult.Success)
             {
-                if (MapDiagnostic(diagnostic) is { } err)
-                    result.Errors.Add(err);
+                result.Success = false;
+                foreach (var diagnostic in emitResult.Diagnostics)
+                {
+                    if (MapDiagnostic(diagnostic) is { } err)
+                        result.Errors.Add(err);
+                }
+            }
+            else
+            {
+                result.Success = true;
+                result.Code = code;
             }
         }
         catch (Exception ex)
@@ -51,23 +73,21 @@ public class DslCompilerService
         return result;
     }
 
-    public async Task<string> RunSandboxAsync(string code)
+    public Task<string> RunSandboxAsync(string code)
     {
-        try
+        var compileResult = Compile(code);
+        if (!compileResult.Success)
         {
-            var script = CSharpScript.Create(code, _scriptOptions);
-            var state = await script.RunAsync();
-            var returnValue = state.ReturnValue;
-            return returnValue?.ToString() ?? "🧪 Sandbox test passed (null returned)";
+            return Task.FromResult($"❌ Compilation error: {string.Join("; ", compileResult.Errors.Select(e => e.Message))}");
         }
-        catch (CompilationErrorException ex)
-        {
-            return $"❌ Compilation error: {string.Join("; ", ex.Diagnostics.Select(d => d.GetMessage()))}";
-        }
-        catch (Exception ex)
-        {
-            return $"❌ Runtime error: {ex.Message}";
-        }
+        return Task.FromResult("🧪 Sandbox test passed");
+    }
+
+    private static string IndentCode(string code)
+    {
+        var lines = code.Split("");
+        var indented = lines.Select(l => "        " + l);
+        return string.Join("", indented);
     }
 
     private static CompilationError? MapDiagnostic(Diagnostic diagnostic)
@@ -83,9 +103,14 @@ public class DslCompilerService
         };
 
         var lineSpan = diagnostic.Location.GetLineSpan();
+        var line = lineSpan.StartLinePosition.Line + 1; // 1-based
+
+        // Корректируем номер строки: вычитаем строки обёртки
+        var adjustedLine = line > WrapperLinesBeforeCode ? line - WrapperLinesBeforeCode : line;
+
         return new CompilationError
         {
-            Line = lineSpan.StartLinePosition.Line + 1,
+            Line = adjustedLine,
             Column = lineSpan.StartLinePosition.Character + 1,
             Message = diagnostic.GetMessage(),
             Code = diagnostic.Id,

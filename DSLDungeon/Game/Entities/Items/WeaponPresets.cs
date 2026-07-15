@@ -1,5 +1,6 @@
 using DSLDungeon.Game.Entities.Combat;
 using DSLDungeon.Game.Entities.Stats;
+// ReSharper disable RedundantArgumentDefaultValue
 
 namespace DSLDungeon.Game.Entities.Items;
 

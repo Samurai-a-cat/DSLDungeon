@@ -12,8 +12,7 @@
         <StandaloneCodeEditor @ref="_editor"
                               Id="dsl-editor"
                               ConstructionOptions="EditorConstructionOptions"
-                              OnDidChangeModelContent="OnEditorContentChanged"
-                              OnDidInit="OnEditorInit" />
+                              OnDidChangeModelContent="OnEditorContentChanged" />
     </div>
 
     <div class="sidebar-panel">
@@ -51,7 +50,6 @@
 
 @code {
     private StandaloneCodeEditor? _editor;
-    private bool _editorReady;
 
     private bool IsBusy => EditorService.Status == CompilationStatus.Applying;
 
@@ -65,19 +63,7 @@
         if (firstRender)
         {
             await EditorService.LoadFromLocalStorageAsync();
-            if (_editorReady && _editor != null)
-            {
-                await _editor.SetValue(EditorService.CurrentCode);
-            }
-        }
-    }
-
-    private async Task OnEditorInit()
-    {
-        _editorReady = true;
-        if (_editor != null)
-        {
-            await _editor.SetValue(EditorService.CurrentCode);
+            // НЕ вызываем SetValue здесь — ConstructionOptions.Value уже содержит CurrentCode
         }
     }
 

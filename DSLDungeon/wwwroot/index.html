@@ -27,10 +27,34 @@
         <span class="dismiss">🗙</span>
     </div>
 
+    <!-- BlazorMonaco scripts -->
     <script src="_content/BlazorMonaco/jsInterop.js"></script>
+    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
+    <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
 
     <script src="js/gameViewport.js"></script>
     <script src="js/panelResize.js"></script>
+
+    <!-- Monaco markers helper -->
+    <script>
+        window.setMonacoMarkers = function(editorId, markers) {
+            if (!window.blazorMonaco || !window.blazorMonaco.editors) {
+                console.warn("blazorMonaco not ready");
+                return;
+            }
+            var editor = window.blazorMonaco.editors.find(function(e) { return e.id === editorId; });
+            if (!editor) {
+                console.warn("Editor not found: " + editorId);
+                return;
+            }
+            var model = editor.editor.getModel();
+            if (!model) {
+                console.warn("Model not found for editor: " + editorId);
+                return;
+            }
+            monaco.editor.setModelMarkers(model, "dsl-compiler", markers);
+        };
+    </script>
 
     <!-- File System API helpers -->
     <script>

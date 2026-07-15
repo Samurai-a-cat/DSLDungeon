@@ -1,6 +1,6 @@
 namespace DSLDungeon.Game.Entities.Combat;
 
-using DSLDungeon.Game.Entities.Stats;
+using Stats;
 
 /// <summary>
 /// Тип урона. byte для компактности в памяти.

@@ -19,8 +19,8 @@ public static class StatKeyRegistry
     }
 
     public static string GetName(int id) => 
-        id < _names.Length && _names[id] != null 
-            ? _names[id]! 
+        id < _names.Length 
+            ? _names[id] 
             : $"unknown_{id}";
 
     public static bool TryParse(string name, out StatKey key)

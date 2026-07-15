@@ -1,5 +1,4 @@
 using DSLDungeon.Game.Entities.Items;
-using DSLDungeon.Game.Entities.Stats;
 
 namespace DSLDungeon.Game.Entities.Components;
 

@@ -1,5 +1,3 @@
-using System.Linq;
-
 namespace DSLDungeon.Game.Entities.Stats;
 
 public class StatSheet

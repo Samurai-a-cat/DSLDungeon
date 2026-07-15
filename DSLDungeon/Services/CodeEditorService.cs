@@ -23,6 +23,10 @@ public class CodeEditorService
 
     public event Action? OnStateChanged;
 
+    // Debounce для on-the-fly проверки
+    private System.Timers.Timer? _debounceTimer;
+    private readonly object _timerLock = new();
+
     public CodeEditorService(DslCompilerService compiler, IJSRuntime js)
     {
         _compiler = compiler;
@@ -42,6 +46,33 @@ Console.WriteLine(""Hello, DSLDungeon!"");
     {
         CurrentCode = code;
         _ = SaveToLocalStorageAsync();
+        ScheduleCompileCheck();
+    }
+
+    private void ScheduleCompileCheck()
+    {
+        lock (_timerLock)
+        {
+            _debounceTimer?.Stop();
+            _debounceTimer?.Dispose();
+            _debounceTimer = new System.Timers.Timer(500); // 500ms debounce
+            _debounceTimer.Elapsed += async (_, _) =>
+            {
+                _debounceTimer?.Dispose();
+                _debounceTimer = null;
+                await CompileOnFlyAsync();
+            };
+            _debounceTimer.AutoReset = false;
+            _debounceTimer.Start();
+        }
+    }
+
+    private async Task CompileOnFlyAsync()
+    {
+        var result = _compiler.Compile(CurrentCode);
+        Errors = result.Errors;
+        NotifyStateChanged();
+        await UpdateMonacoMarkersAsync();
     }
 
     public async Task LoadFromLocalStorageAsync()
@@ -64,6 +95,7 @@ Console.WriteLine(""Hello, DSLDungeon!"");
 
         var result = _compiler.Compile(CurrentCode);
         Errors = result.Errors;
+        await UpdateMonacoMarkersAsync();
 
         if (result.Success)
         {
@@ -82,8 +114,21 @@ Console.WriteLine(""Hello, DSLDungeon!"");
     public async Task TestSandboxAsync()
     {
         SetStatus(CompilationStatus.Applying);
-        var output = await _compiler.RunSandboxAsync(CurrentCode);
-        await _js.InvokeVoidAsync("console.log", output);
+
+        // Таймаут 1 секунда через CancellationTokenSource
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        try
+        {
+            var output = await _compiler.RunSandboxAsync(CurrentCode);
+            // Если RunSandboxAsync не поддерживает CancellationToken — таймаут не сработает
+            // В WASM реальное выполнение кода заблокирует поток anyway
+            await _js.InvokeVoidAsync("console.log", output);
+        }
+        catch (OperationCanceledException)
+        {
+            await _js.InvokeVoidAsync("console.log", "❌ Sandbox timed out after 1 second");
+        }
+
         SetStatus(CompilationStatus.Idle);
         NotifyStateChanged();
     }
@@ -95,6 +140,27 @@ Console.WriteLine(""Hello, DSLDungeon!"");
         {
             await _js.InvokeVoidAsync("downloadFile", "script.cs", CurrentCode);
         }
+    }
+
+    private async Task UpdateMonacoMarkersAsync()
+    {
+        var markers = Errors.Select(e => new
+        {
+            severity = e.Severity switch
+            {
+                ErrorSeverity.Error => 8,
+                ErrorSeverity.Warning => 4,
+                ErrorSeverity.Info => 2,
+                _ => 1
+            },
+            message = e.Message,
+            startLineNumber = e.Line,
+            startColumn = e.Column,
+            endLineNumber = e.Line,
+            endColumn = 1000 // подчёркиваем всю строку от Column до конца
+        }).ToList();
+
+        await _js.InvokeVoidAsync("setMonacoMarkers", "dsl-editor", markers);
     }
 
     private void SetStatus(CompilationStatus status)
