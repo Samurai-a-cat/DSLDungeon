@@ -9,6 +9,7 @@ public class Entity
     public EntityId Id { get; }
     public string Name { get; set; }
     public HexCoords Position { get; set; }
+    public WorldState? World { get; set; }
 
     private readonly Dictionary<Type, EntityComponent> _components = new();
 

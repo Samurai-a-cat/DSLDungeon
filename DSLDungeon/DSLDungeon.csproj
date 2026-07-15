@@ -2,6 +2,8 @@
 
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
+        <WasmEnableWebcil>false</WasmEnableWebcil>
+        <BlazorEnableCompression>false</BlazorEnableCompression>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>

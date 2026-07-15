@@ -40,6 +40,7 @@ public class WorldState
 
     public void SpawnEntity(Entity entity)
     {
+        entity.World = this;
         _entities[entity.Id] = entity;
 
         if (entity is Actor actor)

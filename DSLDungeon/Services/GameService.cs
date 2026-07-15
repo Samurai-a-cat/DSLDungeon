@@ -1,3 +1,4 @@
+using System.Reflection;
 using DSLDungeon.Game;
 using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Entities;
@@ -13,7 +14,7 @@ public class GameService : IDisposable
     public WorldState World { get; private set; }
     public GameLoop Loop { get; private set; }
     public GameUiAgent UiAgent { get; } = new();
-    
+
     private bool _isRunning;
     private CancellationTokenSource? _cts;
 
@@ -78,7 +79,6 @@ public class GameService : IDisposable
 
                 float dt = Loop.GameTimeChannel.Delta.Value;
 
-                // Синхронизируем UI только если это включено
                 if (UiAgent.IsUiSyncEnabled)
                 {
                     UiAgent.SyncFromGame(World, dt);
@@ -90,6 +90,25 @@ public class GameService : IDisposable
         {
             Console.WriteLine($"[КРИТИЧЕСКАЯ ОШИБКА ИГРОВОГО ЦИКЛА]: {ex}");
             World.AddLog($"[ОШИБКА]: {ex.Message}");
+        }
+    }
+
+    public void SetHeroScript(Assembly assembly)
+    {
+        int count = 0;
+        foreach (var actor in World.GetAllActors())
+        {
+            if (actor.TryGetComponent<DslAiComponent>(out var dslAi))
+            {
+                dslAi.CompiledScript = assembly;
+                count++;
+                World.AddLog($"[DSL] Скрипт назначен {actor.Name}.");
+            }
+        }
+
+        if (count == 0)
+        {
+            World.AddLog("[DSL] Внимание: в мире нет героев с DslAiComponent!");
         }
     }
 

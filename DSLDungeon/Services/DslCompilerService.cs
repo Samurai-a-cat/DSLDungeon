@@ -1,3 +1,5 @@
+using System.IO;
+using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -8,37 +10,113 @@ public class CompilationResult
     public bool Success { get; set; }
     public List<CompilationError> Errors { get; set; } = new();
     public string? Code { get; set; }
+    public Assembly? CompiledAssembly { get; set; }
 }
 
 public class DslCompilerService
 {
-    // Обёртка: 8 строк ДО кода игрока (1-3: using, 4: empty, 5-8: class/method decl)
-    private const int WrapperLinesBeforeCode = 8;
+    private const int WrapperLinesBeforeCode = 12;
+    private const int WrapperIndentColumns = 8;
 
-    private const string ScriptWrapper = @"using System;
+    private const string ScriptWrapperPrefix = @"using System;
 using System.Collections.Generic;
 using System.Linq;
+using DSLDungeon.Game.DSL;
+using DSLDungeon.Game.Core;
+using DSLDungeon.Game.Grid;
+using DSLDungeon.Game.Entities;
 
-public class Script
-{{
-    public static void Run()
-    {{
-{0}
-    }}
-}}";
-
-    public CompilationResult Compile(string code)
+public class Script : IHeroScript
+{
+    public void Tick(DslContext context)
     {
+";
+
+    private const string ScriptWrapperSuffix = @"
+    }
+}";
+
+    private readonly HttpClient _httpClient;
+    private List<MetadataReference>? _references;
+    private bool _initialized;
+
+    public DslCompilerService(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    private async Task EnsureReferencesAsync()
+    {
+        if (_initialized) return;
+        _initialized = true;
+
+        _references = new List<MetadataReference>(Basic.Reference.Assemblies.Net90.References.All);
+
+        foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (assembly.IsDynamic) continue;
+
+            string assemblyName = assembly.GetName().Name ?? "";
+            if (IsBclAssembly(assemblyName)) continue;
+
+            // Проверяем, не добавили ли уже
+            bool alreadyAdded = _references.Any(r =>
+                r.Display != null &&
+                (r.Display.EndsWith(assemblyName + ".dll") || r.Display.Contains(assemblyName)));
+            if (alreadyAdded) continue;
+
+            // Загружаем .dll через HTTP из _framework/
+            string path = $"_framework/{assemblyName}.dll";
+            try
+            {
+                var response = await _httpClient.GetAsync(path);
+                if (response.IsSuccessStatusCode)
+                {
+                    var stream = await response.Content.ReadAsStreamAsync();
+                    var metadataRef = MetadataReference.CreateFromStream(stream);
+                    _references.Add(metadataRef);
+                }
+                else
+                {
+                    Console.WriteLine($"[DslCompiler] Warning: {path} returned {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DslCompiler] Warning: Could not load {assemblyName}: {ex.Message}");
+            }
+        }
+    }
+
+    private static bool IsBclAssembly(string name)
+    {
+        var lower = name.ToLowerInvariant();
+        return lower.StartsWith("system.")
+            || lower.StartsWith("microsoft.")
+            || lower.StartsWith("netstandard")
+            || lower == "mscorlib";
+    }
+
+    public async Task<CompilationResult> CompileAsync(string code)
+    {
+        // Нормализуем переводы строк — Monaco может прислать \r\n
+        code = code.Replace("\r\n", "\n").Replace("\r", "\n");
+
         var result = new CompilationResult();
         try
         {
-            var wrappedCode = string.Format(ScriptWrapper, IndentCode(code));
+            await EnsureReferencesAsync();
+
+            var wrappedCode = ScriptWrapperPrefix + IndentCode(code) + ScriptWrapperSuffix;
             var syntaxTree = CSharpSyntaxTree.ParseText(wrappedCode);
+
             var compilation = CSharpCompilation.Create(
                 "DSLDungeonScript",
                 new[] { syntaxTree },
-                Basic.Reference.Assemblies.Net90.References.All,
-                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                _references,
+                new CSharpCompilationOptions(
+                    OutputKind.DynamicallyLinkedLibrary,
+                    concurrentBuild: false)
             );
 
             using var ms = new MemoryStream();
@@ -55,8 +133,11 @@ public class Script
             }
             else
             {
+                ms.Position = 0;
+                var assembly = Assembly.Load(ms.ToArray());
                 result.Success = true;
                 result.Code = code;
+                result.CompiledAssembly = assembly;
             }
         }
         catch (Exception ex)
@@ -73,21 +154,22 @@ public class Script
         return result;
     }
 
-    public Task<string> RunSandboxAsync(string code)
+    public async Task<string> RunSandboxAsync(string code)
     {
-        var compileResult = Compile(code);
+        var compileResult = await CompileAsync(code);
         if (!compileResult.Success)
         {
-            return Task.FromResult($"❌ Compilation error: {string.Join("; ", compileResult.Errors.Select(e => e.Message))}");
+            return $"❌ Compilation error: {string.Join("; ", compileResult.Errors.Select(e => e.Message))}";
         }
-        return Task.FromResult("🧪 Sandbox test passed");
+        return "🧪 Sandbox test passed";
     }
 
     private static string IndentCode(string code)
     {
-        var lines = code.Split("");
+        var normalized = code.Replace("\r\n", "\n").Replace("\r", "\n");
+        var lines = normalized.Split('\n');
         var indented = lines.Select(l => "        " + l);
-        return string.Join("", indented);
+        return string.Join("\n", indented);
     }
 
     private static CompilationError? MapDiagnostic(Diagnostic diagnostic)
@@ -103,15 +185,16 @@ public class Script
         };
 
         var lineSpan = diagnostic.Location.GetLineSpan();
-        var line = lineSpan.StartLinePosition.Line + 1; // 1-based
+        var line = lineSpan.StartLinePosition.Line + 1;
+        var column = lineSpan.StartLinePosition.Character + 1;
 
-        // Корректируем номер строки: вычитаем строки обёртки
         var adjustedLine = line > WrapperLinesBeforeCode ? line - WrapperLinesBeforeCode : line;
+        var adjustedColumn = line > WrapperLinesBeforeCode ? Math.Max(1, column - WrapperIndentColumns) : column;
 
         return new CompilationError
         {
             Line = adjustedLine,
-            Column = lineSpan.StartLinePosition.Character + 1,
+            Column = adjustedColumn,
             Message = diagnostic.GetMessage(),
             Code = diagnostic.Id,
             Severity = severity

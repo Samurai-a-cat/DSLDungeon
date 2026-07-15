@@ -65,7 +65,7 @@ public static class EventPool
         return new T();
     }
 
-    internal static void Return(IQueueEvent ev)
+    public static void Return(IQueueEvent ev)
     {
         if (!_pools.TryGetValue(ev.GetType(), out var bucket))
             throw new InvalidOperationException($"Пул для {ev.GetType().Name} не инициализирован!");

@@ -13,6 +13,7 @@ public enum CompilationStatus
 public class CodeEditorService
 {
     private readonly DslCompilerService _compiler;
+    private readonly GameService _gameService;
     private readonly IJSRuntime _js;
     private const string LocalStorageKey = "dsldungeon_code";
 
@@ -23,23 +24,29 @@ public class CodeEditorService
 
     public event Action? OnStateChanged;
 
-    // Debounce для on-the-fly проверки
     private System.Timers.Timer? _debounceTimer;
     private readonly object _timerLock = new();
 
-    public CodeEditorService(DslCompilerService compiler, IJSRuntime js)
+    public CodeEditorService(DslCompilerService compiler, GameService gameService, IJSRuntime js)
     {
         _compiler = compiler;
+        _gameService = gameService;
         _js = js;
     }
 
     public static string DefaultCode => @"// DSLDungeon Script
 // Пиши код на C# — он будет управлять поведением героев
 
-Console.WriteLine(""Hello, DSLDungeon!"");
-
-// Пример: var hero = GetHero();
-// hero.Queue.Add(new MoveEvent(...));
+// Пример:
+// var enemy = context.FindNearestEnemy();
+// if (enemy != null)
+// {
+//     context.Attack(enemy);
+// }
+// else
+// {
+//     context.Move(2, 2);
+// }
 ";
 
     public void UpdateCode(string code)
@@ -55,7 +62,7 @@ Console.WriteLine(""Hello, DSLDungeon!"");
         {
             _debounceTimer?.Stop();
             _debounceTimer?.Dispose();
-            _debounceTimer = new System.Timers.Timer(500); // 500ms debounce
+            _debounceTimer = new System.Timers.Timer(500);
             _debounceTimer.Elapsed += async (_, _) =>
             {
                 _debounceTimer?.Dispose();
@@ -69,7 +76,7 @@ Console.WriteLine(""Hello, DSLDungeon!"");
 
     private async Task CompileOnFlyAsync()
     {
-        var result = _compiler.Compile(CurrentCode);
+        var result = await _compiler.CompileAsync(CurrentCode);
         Errors = result.Errors;
         NotifyStateChanged();
         await UpdateMonacoMarkersAsync();
@@ -91,15 +98,16 @@ Console.WriteLine(""Hello, DSLDungeon!"");
     public async Task ApplyAsync()
     {
         SetStatus(CompilationStatus.Applying);
-        await Task.Delay(50); // дать UI отрисовать спиннер
+        await Task.Delay(50);
 
-        var result = _compiler.Compile(CurrentCode);
+        var result = await _compiler.CompileAsync(CurrentCode);
         Errors = result.Errors;
         await UpdateMonacoMarkersAsync();
 
-        if (result.Success)
+        if (result.Success && result.CompiledAssembly != null)
         {
             LastValidScript = result.Code;
+            _gameService.SetHeroScript(result.CompiledAssembly);
             SetStatus(CompilationStatus.Applied);
             _ = AutoResetStatusAsync();
         }
@@ -115,13 +123,10 @@ Console.WriteLine(""Hello, DSLDungeon!"");
     {
         SetStatus(CompilationStatus.Applying);
 
-        // Таймаут 1 секунда через CancellationTokenSource
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         try
         {
             var output = await _compiler.RunSandboxAsync(CurrentCode);
-            // Если RunSandboxAsync не поддерживает CancellationToken — таймаут не сработает
-            // В WASM реальное выполнение кода заблокирует поток anyway
             await _js.InvokeVoidAsync("console.log", output);
         }
         catch (OperationCanceledException)
@@ -157,7 +162,7 @@ Console.WriteLine(""Hello, DSLDungeon!"");
             startLineNumber = e.Line,
             startColumn = e.Column,
             endLineNumber = e.Line,
-            endColumn = 1000 // подчёркиваем всю строку от Column до конца
+            endColumn = 1000
         }).ToList();
 
         await _js.InvokeVoidAsync("setMonacoMarkers", "dsl-editor", markers);

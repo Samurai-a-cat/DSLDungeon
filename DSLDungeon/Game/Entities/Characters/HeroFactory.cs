@@ -16,8 +16,8 @@ public static class HeroFactory
         hero.Stats.AddModifier(StatKey.BlockChance, StatModifier.Base(0.15f));
 
         hero.Health.Initialize(120);
-
         hero.AddComponent(new EquipmentComponent());
+        hero.AddComponent(new DslAiComponent());
 
         return hero;
     }
@@ -32,8 +32,8 @@ public static class HeroFactory
         hero.Stats.AddModifier(StatKey.ResistanceFire, StatModifier.Base(0.25f));
 
         hero.Health.Initialize(80);
-
         hero.AddComponent(new EquipmentComponent());
+        hero.AddComponent(new DslAiComponent());
 
         hero.AddComponent(new BackgroundThreadData
         {
