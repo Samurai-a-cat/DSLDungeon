@@ -1,0 +1,110 @@
+.code-editor-page {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    background: #0a0a0f;
+    overflow: hidden;
+}
+
+.editor-section {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+}
+
+::deep .monaco-editor {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.sidebar-panel {
+    width: 400px;
+    flex-shrink: 0;
+    background: #0c0c14;
+    border-left: 1px solid #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 12px;
+}
+
+.toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.toolbar-btn {
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid #2a2a3e;
+    background: #14141f;
+    color: #e2e2e9;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.3px;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+    border-color: #ffd700;
+    background: #1a1a2a;
+}
+
+.toolbar-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.status-bar {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.3s;
+}
+
+.status-idle {
+    background: #14141f;
+    color: #8888a0;
+    border: 1px solid #2a2a3e;
+}
+
+.status-applying {
+    background: #1a1a3a;
+    color: #8888ff;
+    border: 1px solid #4444cc;
+}
+
+.status-applied {
+    background: #1a3a1a;
+    color: #00ff55;
+    border: 1px solid #00cc44;
+}
+
+.status-error {
+    background: #3a1a1a;
+    color: #ff5555;
+    border: 1px solid #cc3333;
+}
+
+.error-panel-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}

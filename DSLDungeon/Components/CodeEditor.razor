@@ -1,0 +1,155 @@
+@page "/code-editor"
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using BlazorMonaco.Languages
+@using DSLDungeon.Services
+@implements IDisposable
+@inject CodeEditorService EditorService
+@inject IJSRuntime JSRuntime
+
+<div class="code-editor-page">
+    <div class="editor-section">
+        <StandaloneCodeEditor @ref="_editor"
+                              Id="dsl-editor"
+                              ConstructionOptions="EditorConstructionOptions"
+                              OnDidChangeModelContent="OnEditorContentChanged"
+                              OnDidInit="OnEditorInit" />
+    </div>
+
+    <div class="sidebar-panel">
+        <div class="toolbar">
+            <button class="toolbar-btn @GetStatusClass()" @onclick="ApplyCode" disabled="@IsBusy">
+                @if (EditorService.Status == CompilationStatus.Applying)
+                {
+                    <span class="spinner">⟳</span>
+                }
+                else
+                {
+                    <span>▶</span>
+                }
+                Apply
+            </button>
+
+            <button class="toolbar-btn" @onclick="TestSandbox" disabled="@IsBusy">
+                🧪 Test Sandbox
+            </button>
+
+            <button class="toolbar-btn" @onclick="SaveToFile" disabled="@IsBusy">
+                💾 Save to File
+            </button>
+        </div>
+
+        <div class="status-bar @GetStatusClass()">
+            @GetStatusText()
+        </div>
+
+        <div class="error-panel-wrapper">
+            <ErrorPanel Errors="EditorService.Errors" OnErrorClicked="NavigateToError" />
+        </div>
+    </div>
+</div>
+
+@code {
+    private StandaloneCodeEditor? _editor;
+    private bool _editorReady;
+
+    private bool IsBusy => EditorService.Status == CompilationStatus.Applying;
+
+    protected override void OnInitialized()
+    {
+        EditorService.OnStateChanged += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await EditorService.LoadFromLocalStorageAsync();
+            if (_editorReady && _editor != null)
+            {
+                await _editor.SetValue(EditorService.CurrentCode);
+            }
+        }
+    }
+
+    private async Task OnEditorInit()
+    {
+        _editorReady = true;
+        if (_editor != null)
+        {
+            await _editor.SetValue(EditorService.CurrentCode);
+        }
+    }
+
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "csharp",
+            Theme = "vs-dark",
+            Value = EditorService.CurrentCode,
+            Minimap = new EditorMinimapOptions { Enabled = true },
+            MatchBrackets = "always",
+            AutoClosingBrackets = "always",
+            FontSize = 14,
+            LineNumbers = "on",
+            ScrollBeyondLastLine = false
+        };
+    }
+
+    private async Task OnEditorContentChanged(ModelContentChangedEvent e)
+    {
+        if (_editor == null) return;
+        var value = await _editor.GetValue();
+        EditorService.UpdateCode(value);
+    }
+
+    private async Task ApplyCode()
+    {
+        await EditorService.ApplyAsync();
+    }
+
+    private async Task TestSandbox()
+    {
+        await EditorService.TestSandboxAsync();
+    }
+
+    private async Task SaveToFile()
+    {
+        await EditorService.SaveToFileAsync();
+    }
+
+    private async Task NavigateToError(CompilationError error)
+    {
+        if (_editor == null) return;
+        await _editor.RevealLineInCenter(error.Line);
+        await _editor.SetPosition(new Position
+        {
+            LineNumber = error.Line,
+            Column = error.Column
+        }, "api");
+        await _editor.Focus();
+    }
+
+    private string GetStatusClass() => EditorService.Status switch
+    {
+        CompilationStatus.Applying => "status-applying",
+        CompilationStatus.Applied => "status-applied",
+        CompilationStatus.Error => "status-error",
+        _ => "status-idle"
+    };
+
+    private string GetStatusText() => EditorService.Status switch
+    {
+        CompilationStatus.Applying => "Applying...",
+        CompilationStatus.Applied => "Applied ✓",
+        CompilationStatus.Error => "Error ✗",
+        _ => "Idle"
+    };
+
+    public void Dispose()
+    {
+        EditorService.OnStateChanged -= StateHasChanged;
+    }
+}

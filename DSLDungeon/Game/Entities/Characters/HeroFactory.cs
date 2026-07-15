@@ -11,7 +11,7 @@ public static class HeroFactory
     {
         var hero = new Actor(id, "Рыцарь", position);
 
-        hero.Stats.SetupBaseStats(str: 15, dex: 10, @int: 8, con: 12);
+        hero.Stats.SetupBaseStats(str: 999, dex: 999, @int: 8, con: 12);
         hero.Stats.AddModifier(StatKey.DamageBase, StatModifier.Base(10, "Physical"));
         hero.Stats.AddModifier(StatKey.Armor, StatModifier.Base(5));
         hero.Stats.AddModifier(StatKey.BlockChance, StatModifier.Base(0.15f));

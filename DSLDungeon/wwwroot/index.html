@@ -26,11 +26,50 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+
+    <script src="_content/BlazorMonaco/jsInterop.js"></script>
+
     <script src="js/gameViewport.js"></script>
     <script src="js/panelResize.js"></script>
+
+    <!-- File System API helpers -->
+    <script>
+        window.saveToFile = async function(filename, content) {
+            try {
+                if (window.showSaveFilePicker) {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: filename,
+                        types: [{
+                            description: 'C# Source File',
+                            accept: { 'text/x-csharp': ['.cs'] }
+                        }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                    return true;
+                }
+                return false;
+            } catch (err) {
+                console.log('File System API failed, falling back:', err);
+                return false;
+            }
+        };
+
+        window.downloadFile = function(filename, content) {
+            const blob = new Blob([content], { type: 'text/x-csharp' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+    </script>
+
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 
 </html>
-
-

@@ -81,3 +81,10 @@
         overflow-y: auto;
     }
 }
+
+.nav-icon {
+    font-family: monospace;
+    font-weight: bold;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+}

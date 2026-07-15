@@ -1,0 +1,51 @@
+@using DSLDungeon.Services
+
+<div class="error-panel">
+    <div class="error-header">
+        <span class="panel-title">Errors & Warnings</span>
+        <div class="counters">
+            <span class="counter error-count">🔴 @Errors.Count(e => e.Severity == ErrorSeverity.Error)</span>
+            <span class="counter warning-count">🟡 @Errors.Count(e => e.Severity == ErrorSeverity.Warning)</span>
+            <span class="counter info-count">🔵 @Errors.Count(e => e.Severity == ErrorSeverity.Info)</span>
+        </div>
+    </div>
+
+    <div class="error-list">
+        @if (Errors.Count == 0)
+        {
+            <div class="no-errors">
+                <span class="check-icon">✓</span>
+                <span>No errors</span>
+            </div>
+        }
+        else
+        {
+            @foreach (var error in Errors)
+            {
+                <div class="error-item @GetSeverityClass(error.Severity)" @onclick="() => OnErrorClick(error)">
+                    <div class="error-location">@error.Line:@error.Column</div>
+                    <div class="error-message">@error.Message</div>
+                    <div class="error-code">@error.Code</div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<CompilationError> Errors { get; set; } = new();
+    [Parameter] public EventCallback<CompilationError> OnErrorClicked { get; set; }
+
+    private string GetSeverityClass(ErrorSeverity severity) => severity switch
+    {
+        ErrorSeverity.Error => "severity-error",
+        ErrorSeverity.Warning => "severity-warning",
+        ErrorSeverity.Info => "severity-info",
+        _ => ""
+    };
+
+    private async Task OnErrorClick(CompilationError error)
+    {
+        await OnErrorClicked.InvokeAsync(error);
+    }
+}
