@@ -1,41 +1,87 @@
+using System;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DSLDungeon.Game.DSL;
 
-/// <summary>
-/// Инжектирует счётчик операций в код игрока ДО компиляции.
-/// Вставляет проверку в начало каждого метода и в начало каждого цикла.
-/// Если скрипт делает больше 10000 шагов — бросает TimeoutException.
-/// </summary>
 public class DslSafetyInjector : CSharpSyntaxRewriter
 {
     private static readonly StatementSyntax OpsCheck = SyntaxFactory.ParseStatement(
         @"if (++__dslOps > 10000) throw new System.TimeoutException(""DSL operation limit exceeded"");");
 
+    private static readonly StatementSyntax DepthCheck = SyntaxFactory.ParseStatement(
+        @"if (++__dslCallDepth > 100) throw new System.TimeoutException(""DSL stack depth limit exceeded"");");
+
+    private static readonly StatementSyntax DepthDecrement = SyntaxFactory.ParseStatement(
+        @"__dslCallDepth--;");
+
     public override SyntaxNode VisitMethodDeclaration(MethodDeclarationSyntax node)
     {
         var visited = (MethodDeclarationSyntax)base.VisitMethodDeclaration(node);
+
+        // Конвертируем выражение-тело (=>) в обычный блок перед инжекцией
+        if (visited.ExpressionBody != null)
+        {
+            StatementSyntax stmt = visited.ReturnType.ToString() == "void"
+                ? SyntaxFactory.ExpressionStatement(visited.ExpressionBody.Expression)
+                : SyntaxFactory.ReturnStatement(visited.ExpressionBody.Expression);
+
+            var block = SyntaxFactory.Block(stmt);
+            visited = visited
+                .WithExpressionBody(null)
+                .WithSemicolonToken(default)
+                .WithBody(block);
+        }
+
         if (visited.Body == null) return visited;
+
+        // Оборачиваем оригинальное тело метода в try-finally для безопасного декремента глубины стека
+        var tryFinally = SyntaxFactory.TryStatement(
+            visited.Body,
+            SyntaxFactory.List<CatchClauseSyntax>(),
+            SyntaxFactory.FinallyClause(SyntaxFactory.Block(DepthDecrement))
+        );
 
         var newStatements = new SyntaxList<StatementSyntax>()
             .Add(OpsCheck)
-            .AddRange(visited.Body.Statements);
+            .Add(DepthCheck)
+            .Add(tryFinally);
 
-        return visited.WithBody(visited.Body.WithStatements(newStatements));
+        return visited.WithBody(SyntaxFactory.Block(newStatements));
     }
 
     public override SyntaxNode VisitLocalFunctionStatement(LocalFunctionStatementSyntax node)
     {
         var visited = (LocalFunctionStatementSyntax)base.VisitLocalFunctionStatement(node);
+
+        if (visited.ExpressionBody != null)
+        {
+            StatementSyntax stmt = visited.ReturnType.ToString() == "void"
+                ? SyntaxFactory.ExpressionStatement(visited.ExpressionBody.Expression)
+                : SyntaxFactory.ReturnStatement(visited.ExpressionBody.Expression);
+
+            var block = SyntaxFactory.Block(stmt);
+            visited = visited
+                .WithExpressionBody(null)
+                .WithSemicolonToken(default)
+                .WithBody(block);
+        }
+
         if (visited.Body == null) return visited;
+
+        var tryFinally = SyntaxFactory.TryStatement(
+            visited.Body,
+            SyntaxFactory.List<CatchClauseSyntax>(),
+            SyntaxFactory.FinallyClause(SyntaxFactory.Block(DepthDecrement))
+        );
 
         var newStatements = new SyntaxList<StatementSyntax>()
             .Add(OpsCheck)
-            .AddRange(visited.Body.Statements);
+            .Add(DepthCheck)
+            .Add(tryFinally);
 
-        return visited.WithBody(visited.Body.WithStatements(newStatements));
+        return visited.WithBody(SyntaxFactory.Block(newStatements));
     }
 
     public override SyntaxNode VisitWhileStatement(WhileStatementSyntax node)
@@ -74,7 +120,6 @@ public class DslSafetyInjector : CSharpSyntaxRewriter
         }
         else
         {
-            // while (x) Foo(); → while (x) { check; Foo(); }
             var newBlock = SyntaxFactory.Block(OpsCheck, body);
             return withStatement(newBlock);
         }

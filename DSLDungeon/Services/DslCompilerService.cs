@@ -1,5 +1,10 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using System.Net.Http;
+using System.Threading.Tasks;
 using DSLDungeon.Game.DSL;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -17,8 +22,8 @@ public class CompilationResult
 
 public class DslCompilerService
 {
-    private const int WrapperLinesBeforeCode = 13;
-    private const int WrapperIndentColumns = 8;
+    private const int WrapperLinesBeforeCode = 12; // Изменилось из-за нового поля __dslCallDepth
+    private const int WrapperIndentColumns = 4;
 
     private const string ScriptWrapperPrefix = @"using System;
 using System.Collections.Generic;
@@ -31,12 +36,10 @@ using DSLDungeon.Game.Entities;
 public class Script : IHeroScript
 {
     private int __dslOps;
-    public void Tick(DslContext context)
-    {
+    private int __dslCallDepth;
 ";
 
     private const string ScriptWrapperSuffix = @"
-    }
 }";
 
     private readonly HttpClient _httpClient;
@@ -62,13 +65,11 @@ public class Script : IHeroScript
             string assemblyName = assembly.GetName().Name ?? "";
             if (IsBclAssembly(assemblyName)) continue;
 
-            // Проверяем, не добавили ли уже
             bool alreadyAdded = _references.Any(r =>
                 r.Display != null &&
                 (r.Display.EndsWith(assemblyName + ".dll") || r.Display.Contains(assemblyName)));
             if (alreadyAdded) continue;
 
-            // Загружаем .dll через HTTP из _framework/
             string path = $"_framework/{assemblyName}.dll";
             try
             {
@@ -78,10 +79,6 @@ public class Script : IHeroScript
                     var stream = await response.Content.ReadAsStreamAsync();
                     var metadataRef = MetadataReference.CreateFromStream(stream);
                     _references.Add(metadataRef);
-                }
-                else
-                {
-                    Console.WriteLine($"[DslCompiler] Warning: {path} returned {response.StatusCode}");
                 }
             }
             catch (Exception ex)
@@ -100,64 +97,43 @@ public class Script : IHeroScript
             || lower == "mscorlib";
     }
 
-
-    /// <summary>
-    /// Проверяет код на запрещённые вызовы (File, Process, Thread и т.д.).
-    /// Работает ДО компиляции — на уровне синтаксического дерева.
-    /// </summary>
     private static List<CompilationError> ValidateSecurity(SyntaxNode root)
     {
         var errors = new List<CompilationError>();
 
-        var forbiddenCalls = new[]
+        var forbiddenIdentifiers = new HashSet<string>(StringComparer.Ordinal)
         {
-            "File.", "Directory.", "Path.", "Process.", "Thread.", "Task.",
-            "Assembly.", "Type.Get", "Activator.", "Environment.",
-            "Console.", "HttpClient.", "WebRequest.", "Socket.",
-            "Marshal.", "Unsafe.", "GC.", "Debugger.",
-            "AppDomain.", "Reflection."
+            "File", "Directory", "Path", "Process", "Thread", "Task",
+            "Assembly", "Type", "Activator", "Environment",
+            "Console", "HttpClient", "WebRequest", "Socket",
+            "Marshal", "Unsafe", "GC", "Debugger",
+            "AppDomain", "Reflection", "WebClient", "DllImport", "Win32",
+            "DSLDungeon",
+            
+            // ---- ЗАЩИТА ОТ JS-ИНЪЕКЦИЙ И СИСТЕМНОГО ИНТЕРОПА ----
+            "JSImport",               // Блокирует [JSImport] интероп .NET 7+
+            "JSExport",               // Блокирует [JSExport] интероп .NET 7+
+            "JSRuntime",              // Блокирует доступ к JSRuntime Blazor
+            "IJSObjectReference",     // Блокирует ссылки на объекты JS
+            "IJSStreamReference",      // Блокирует стримы данных в JS
+            "IJSUnmarshalledRuntime", // Блокирует старый немаршалированный интероп
+            "JSHost",                 // Блокирует хост-команды WebAssembly
+            "LibraryImport"           // Блокирует современный аналог DllImport в .NET 7+
         };
 
-        // Запрещённые вызовы методов: File.ReadAllText, Process.Start и т.д.
-        foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        foreach (var id in root.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>())
         {
-            var target = invocation.Expression.ToString();
-            foreach (var forbidden in forbiddenCalls)
+            var name = id.Identifier.ValueText;
+            if (forbiddenIdentifiers.Contains(name))
             {
-                if (target.Contains(forbidden))
+                var span = id.GetLocation().GetLineSpan();
+                errors.Add(new CompilationError
                 {
-                    var span = invocation.GetLocation().GetLineSpan();
-                    errors.Add(new CompilationError
-                    {
-                        Line = span.StartLinePosition.Line + 1,
-                        Column = span.StartLinePosition.Character + 1,
-                        Message = $"Вызов '{target}' запрещён в DSL. Используйте только context.*, Math.* и базовые операции.",
-                        Severity = ErrorSeverity.Error
-                    });
-                    break;
-                }
-            }
-        }
-
-        // Запрещённые создания объектов: new Thread(), new Task(), new FileStream()
-        var forbiddenTypes = new[] { "Thread", "Task", "FileStream", "HttpClient", "Socket", "Process" };
-        foreach (var creation in root.DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
-        {
-            var typeName = creation.Type.ToString();
-            foreach (var forbidden in forbiddenTypes)
-            {
-                if (typeName.Contains(forbidden))
-                {
-                    var span = creation.GetLocation().GetLineSpan();
-                    errors.Add(new CompilationError
-                    {
-                        Line = span.StartLinePosition.Line + 1,
-                        Column = span.StartLinePosition.Character + 1,
-                        Message = $"Создание объектов типа '{typeName}' запрещено в DSL.",
-                        Severity = ErrorSeverity.Error
-                    });
-                    break;
-                }
+                    Line = span.StartLinePosition.Line + 1,
+                    Column = span.StartLinePosition.Character + 1,
+                    Message = $"Использование '{name}' запрещено в целях безопасности DSL. Попытки выполнения JavaScript-кода пресекаются.",
+                    Severity = ErrorSeverity.Error
+                });
             }
         }
 
@@ -166,10 +142,22 @@ public class Script : IHeroScript
 
     public async Task<CompilationResult> CompileAsync(string code)
     {
-        // Нормализуем переводы строк — Monaco может прислать \r\n
         code = code.Replace("\r\n", "\n").Replace("\r", "\n");
 
-        // Проверка структуры графа: каждая ветвь должна завершаться командой
+        var rawTree = CSharpSyntaxTree.ParseText(code);
+
+        // 1. Проверка безопасности сырого AST
+        var securityErrors = ValidateSecurity(rawTree.GetRoot());
+        if (securityErrors.Count > 0)
+        {
+            return new CompilationResult
+            {
+                Success = false,
+                Errors = securityErrors
+            };
+        }
+
+        // 2. Валидация наличия точки входа
         var graphErrors = DslGraphValidator.Validate(code);
         if (graphErrors.Count > 0)
         {
@@ -180,27 +168,13 @@ public class Script : IHeroScript
             };
         }
 
-        // Проверка безопасности ДО компиляции
-        var securityTree = CSharpSyntaxTree.ParseText(code);
-        var securityErrors = ValidateSecurity(securityTree.GetRoot());
-        if (securityErrors.Count > 0)
-        {
-            return new CompilationResult
-            {
-                Success = false,
-                Errors = securityErrors
-            };
-        }
-
         var result = new CompilationResult();
         try
         {
             await EnsureReferencesAsync();
 
-            // Инжектируем защиту от бесконечных циклов
-            var playerTree = CSharpSyntaxTree.ParseText(code);
             var injector = new DslSafetyInjector();
-            var safeCode = injector.Visit(playerTree.GetRoot()).ToFullString();
+            var safeCode = injector.Visit(rawTree.GetRoot()).ToFullString();
 
             var wrappedCode = ScriptWrapperPrefix + IndentCode(safeCode) + ScriptWrapperSuffix;
             var syntaxTree = CSharpSyntaxTree.ParseText(wrappedCode);
@@ -220,10 +194,28 @@ public class Script : IHeroScript
             if (!emitResult.Success)
             {
                 result.Success = false;
-                foreach (var diagnostic in emitResult.Diagnostics)
+
+                bool hasClassLevelStatementErrors = emitResult.Diagnostics.Any(d => 
+                    d.Id == "CS1519" || d.Id == "CS0825" || d.Id == "CS8803" || d.Id == "CS8805" || 
+                    d.Id == "CS0236" || d.Id == "CS8641" || d.Id == "CS0535");
+
+                if (hasClassLevelStatementErrors)
                 {
-                    if (MapDiagnostic(diagnostic) is { } err)
-                        result.Errors.Add(err);
+                    result.Errors.Add(new CompilationError
+                    {
+                        Line = 1,
+                        Column = 1,
+                        Message = "⚠️ Ошибка архитектуры скрипта: в новой версии весь исполняемый код должен находиться внутри методов. Пожалуйста, оберните вашу логику в метод: 'public void Tick(DslContext context) { ... }'. (Если вы видите эту ошибку после обновления, очистите редактор или нажмите 'Сбросить', чтобы применить новый шаблон).",
+                        Severity = ErrorSeverity.Error
+                    });
+                }
+                else
+                {
+                    foreach (var diagnostic in emitResult.Diagnostics)
+                    {
+                        if (MapDiagnostic(diagnostic, isWrapped: true) is { } err)
+                            result.Errors.Add(err);
+                    }
                 }
             }
             else
@@ -263,11 +255,11 @@ public class Script : IHeroScript
     {
         var normalized = code.Replace("\r\n", "\n").Replace("\r", "\n");
         var lines = normalized.Split('\n');
-        var indented = lines.Select(l => "        " + l);
+        var indented = lines.Select(l => "    " + l);
         return string.Join("\n", indented);
     }
 
-    private static CompilationError? MapDiagnostic(Diagnostic diagnostic)
+    private static CompilationError? MapDiagnostic(Diagnostic diagnostic, bool isWrapped)
     {
         if (diagnostic.Severity == DiagnosticSeverity.Hidden) return null;
 
@@ -283,8 +275,14 @@ public class Script : IHeroScript
         var line = lineSpan.StartLinePosition.Line + 1;
         var column = lineSpan.StartLinePosition.Character + 1;
 
-        var adjustedLine = line > WrapperLinesBeforeCode ? line - WrapperLinesBeforeCode : line;
-        var adjustedColumn = line > WrapperLinesBeforeCode ? Math.Max(1, column - WrapperIndentColumns) : column;
+        int adjustedLine = line;
+        int adjustedColumn = column;
+
+        if (isWrapped && line > WrapperLinesBeforeCode)
+        {
+            adjustedLine = line - WrapperLinesBeforeCode;
+            adjustedColumn = Math.Max(1, column - WrapperIndentColumns);
+        }
 
         return new CompilationError
         {

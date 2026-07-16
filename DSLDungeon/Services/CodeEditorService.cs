@@ -1,4 +1,9 @@
 using Microsoft.JSInterop;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DSLDungeon.Services;
 
@@ -37,22 +42,32 @@ public class CodeEditorService
     public static string DefaultCode => @"// DSLDungeon Script
 // Пиши код на C# — он будет управлять поведением героев
 
-var enemy = context.FindNearestEnemyInfo();
-if (enemy.HasValue)
+public void Tick(DslContext context)
 {
-    int dist = context.DistanceTo(enemy.Value.Q, enemy.Value.R);
-    if (dist <= 1)
+    var enemy = context.FindNearestEnemyInfo();
+    if (enemy.HasValue)
     {
-        context.Attack(enemy.Value.Name);
+        int dist = context.DistanceTo(enemy.Value.Q, enemy.Value.R);
+        if (dist <= 1)
+        {
+            context.Attack(enemy.Value.Name);
+        }
+        else
+        {
+            context.MoveTowards(enemy.Value.Q, enemy.Value.R);
+        }
     }
     else
     {
-        context.MoveTowards(enemy.Value.Q, enemy.Value.R);
+        context.Wait(0.5f);
     }
 }
-else
+
+// Вы можете создавать любые вспомогательные функции!
+// Все они должны возвращать значение, завершаться return или вызывать команду.
+private int GetTargetDistance(DslContext context, int targetQ, int targetR)
 {
-    context.Wait(0.5f);
+    return context.DistanceTo(targetQ, targetR);
 }
 ";
 
@@ -134,11 +149,12 @@ else
         try
         {
             var output = await _compiler.RunSandboxAsync(CurrentCode);
-            await _js.InvokeVoidAsync("console.log", output);
+            // Явное приведение аргумента к object для устранения неоднозначности вызова
+            await _js.InvokeVoidAsync("console.log", (object)output);
         }
         catch (OperationCanceledException)
         {
-            await _js.InvokeVoidAsync("console.log", "❌ Sandbox timed out after 1 second");
+            await _js.InvokeVoidAsync("console.log", (object)"❌ Sandbox timed out after 1 second");
         }
 
         SetStatus(CompilationStatus.Idle);
