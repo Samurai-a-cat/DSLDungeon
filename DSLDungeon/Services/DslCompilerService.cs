@@ -1,7 +1,9 @@
 using System.IO;
 using System.Reflection;
+using DSLDungeon.Game.DSL;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace DSLDungeon.Services;
 
@@ -15,7 +17,7 @@ public class CompilationResult
 
 public class DslCompilerService
 {
-    private const int WrapperLinesBeforeCode = 12;
+    private const int WrapperLinesBeforeCode = 13;
     private const int WrapperIndentColumns = 8;
 
     private const string ScriptWrapperPrefix = @"using System;
@@ -28,6 +30,7 @@ using DSLDungeon.Game.Entities;
 
 public class Script : IHeroScript
 {
+    private int __dslOps;
     public void Tick(DslContext context)
     {
 ";
@@ -97,17 +100,109 @@ public class Script : IHeroScript
             || lower == "mscorlib";
     }
 
+
+    /// <summary>
+    /// Проверяет код на запрещённые вызовы (File, Process, Thread и т.д.).
+    /// Работает ДО компиляции — на уровне синтаксического дерева.
+    /// </summary>
+    private static List<CompilationError> ValidateSecurity(SyntaxNode root)
+    {
+        var errors = new List<CompilationError>();
+
+        var forbiddenCalls = new[]
+        {
+            "File.", "Directory.", "Path.", "Process.", "Thread.", "Task.",
+            "Assembly.", "Type.Get", "Activator.", "Environment.",
+            "Console.", "HttpClient.", "WebRequest.", "Socket.",
+            "Marshal.", "Unsafe.", "GC.", "Debugger.",
+            "AppDomain.", "Reflection."
+        };
+
+        // Запрещённые вызовы методов: File.ReadAllText, Process.Start и т.д.
+        foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            var target = invocation.Expression.ToString();
+            foreach (var forbidden in forbiddenCalls)
+            {
+                if (target.Contains(forbidden))
+                {
+                    var span = invocation.GetLocation().GetLineSpan();
+                    errors.Add(new CompilationError
+                    {
+                        Line = span.StartLinePosition.Line + 1,
+                        Column = span.StartLinePosition.Character + 1,
+                        Message = $"Вызов '{target}' запрещён в DSL. Используйте только context.*, Math.* и базовые операции.",
+                        Severity = ErrorSeverity.Error
+                    });
+                    break;
+                }
+            }
+        }
+
+        // Запрещённые создания объектов: new Thread(), new Task(), new FileStream()
+        var forbiddenTypes = new[] { "Thread", "Task", "FileStream", "HttpClient", "Socket", "Process" };
+        foreach (var creation in root.DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
+        {
+            var typeName = creation.Type.ToString();
+            foreach (var forbidden in forbiddenTypes)
+            {
+                if (typeName.Contains(forbidden))
+                {
+                    var span = creation.GetLocation().GetLineSpan();
+                    errors.Add(new CompilationError
+                    {
+                        Line = span.StartLinePosition.Line + 1,
+                        Column = span.StartLinePosition.Character + 1,
+                        Message = $"Создание объектов типа '{typeName}' запрещено в DSL.",
+                        Severity = ErrorSeverity.Error
+                    });
+                    break;
+                }
+            }
+        }
+
+        return errors;
+    }
+
     public async Task<CompilationResult> CompileAsync(string code)
     {
         // Нормализуем переводы строк — Monaco может прислать \r\n
         code = code.Replace("\r\n", "\n").Replace("\r", "\n");
+
+        // Проверка структуры графа: каждая ветвь должна завершаться командой
+        var graphErrors = DslGraphValidator.Validate(code);
+        if (graphErrors.Count > 0)
+        {
+            return new CompilationResult
+            {
+                Success = false,
+                Errors = graphErrors
+            };
+        }
+
+        // Проверка безопасности ДО компиляции
+        var securityTree = CSharpSyntaxTree.ParseText(code);
+        var securityErrors = ValidateSecurity(securityTree.GetRoot());
+        if (securityErrors.Count > 0)
+        {
+            return new CompilationResult
+            {
+                Success = false,
+                Errors = securityErrors
+            };
+        }
 
         var result = new CompilationResult();
         try
         {
             await EnsureReferencesAsync();
 
-            var wrappedCode = ScriptWrapperPrefix + IndentCode(code) + ScriptWrapperSuffix;
+            // Инжектируем защиту от бесконечных циклов
+            var playerTree = CSharpSyntaxTree.ParseText(code);
+            var injector = new DslSafetyInjector();
+            var safeCode = injector.Visit(playerTree.GetRoot()).ToFullString();
+
+            var wrappedCode = ScriptWrapperPrefix + IndentCode(safeCode) + ScriptWrapperSuffix;
             var syntaxTree = CSharpSyntaxTree.ParseText(wrappedCode);
 
             var compilation = CSharpCompilation.Create(

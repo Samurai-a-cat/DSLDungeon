@@ -37,16 +37,23 @@ public class CodeEditorService
     public static string DefaultCode => @"// DSLDungeon Script
 // Пиши код на C# — он будет управлять поведением героев
 
-// Пример:
-// var enemy = context.FindNearestEnemy();
-// if (enemy != null)
-// {
-//     context.Attack(enemy);
-// }
-// else
-// {
-//     context.Move(2, 2);
-// }
+var enemy = context.FindNearestEnemyInfo();
+if (enemy.HasValue)
+{
+    int dist = context.DistanceTo(enemy.Value.Q, enemy.Value.R);
+    if (dist <= 1)
+    {
+        context.Attack(enemy.Value.Name);
+    }
+    else
+    {
+        context.MoveTowards(enemy.Value.Q, enemy.Value.R);
+    }
+}
+else
+{
+    context.Wait(0.5f);
+}
 ";
 
     public void UpdateCode(string code)
