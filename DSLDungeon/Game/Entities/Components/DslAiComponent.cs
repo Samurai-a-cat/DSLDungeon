@@ -1,6 +1,5 @@
 using System.Reflection;
 using DSLDungeon.Game.DSL;
-using DSLDungeon.Game.Entities;
 
 namespace DSLDungeon.Game.Entities.Components;
 

@@ -1,8 +1,5 @@
-using DSLDungeon.Game.Core;
 using DSLDungeon.Game.Core.Actions;
 using DSLDungeon.Game.Core.Actions.Systems;
-using DSLDungeon.Game.Entities;
-using DSLDungeon.Game.Entities.Components;
 using DSLDungeon.Game.Entities.Items;
 using DSLDungeon.Game.Entities.Stats;
 using DSLDungeon.Game.Grid;

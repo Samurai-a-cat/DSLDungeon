@@ -1,9 +1,4 @@
 using Microsoft.JSInterop;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace DSLDungeon.Services;
 
@@ -150,11 +145,11 @@ private int GetTargetDistance(DslContext context, int targetQ, int targetR)
         {
             var output = await _compiler.RunSandboxAsync(CurrentCode);
             // Явное приведение аргумента к object для устранения неоднозначности вызова
-            await _js.InvokeVoidAsync("console.log", (object)output);
+            await _js.InvokeVoidAsync("console.log", output);
         }
         catch (OperationCanceledException)
         {
-            await _js.InvokeVoidAsync("console.log", (object)"❌ Sandbox timed out after 1 second");
+            await _js.InvokeVoidAsync("console.log", "❌ Sandbox timed out after 1 second");
         }
 
         SetStatus(CompilationStatus.Idle);

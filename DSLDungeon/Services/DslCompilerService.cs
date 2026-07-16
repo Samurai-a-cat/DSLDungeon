@@ -1,10 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Net.Http;
-using System.Threading.Tasks;
 using DSLDungeon.Game.DSL;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;

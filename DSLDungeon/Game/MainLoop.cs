@@ -1,10 +1,6 @@
 using DSLDungeon.Game.Core.Actions;
-using DSLDungeon.Game.Core.Actions.Systems;
 using DSLDungeon.Game.Core.Time;
 using DSLDungeon.Game.Entities;
-using DSLDungeon.Game.Entities.Components;
-using DSLDungeon.Game.Entities.Items;
-using DSLDungeon.Game.Grid;
 
 namespace DSLDungeon.Game;
 
